@@ -1,8 +1,8 @@
 import { comRetentativa, context, fail, persist, sameOrigin } from "@/lib/server";
-import { getPeriod, requireThat, type Entry } from "@/lib/domain";
+import { getPeriod, monthLabel, requireThat, type Entry } from "@/lib/domain";
 import { caminhoDocumento, enviarArquivo, sha256 } from "@/lib/arquivos";
 import { carregarCredenciais } from "@/lib/serpro";
-import { gerarDas } from "@/lib/serpro-servicos";
+import { gerarDas, SemDeclaracaoPgdas } from "@/lib/serpro-servicos";
 import { clienteAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
-    const { empresaId, competencia } = await request.json();
+    const { empresaId, competencia, jaTransmitida } = await request.json();
     requireThat(/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia), "Competência inválida.");
     const ctx = await context(empresaId);
     requireThat(ctx.role === "accountant", "Somente a equipe do escritório gera o DAS.", 403);
@@ -20,8 +20,25 @@ export async function POST(request: Request) {
     requireThat(getPeriod(ctx.records, competencia), "Abra a competência antes de gerar o DAS.");
 
     const admin = clienteAdmin();
+    // Trava de cobrança: se o SERPRO já disse que não há PGDAS-D no período, só tenta de novo
+    // quando o contador confirma que transmitiu a declaração depois disso.
+    const { data: situacao } = await admin.from("situacoes_fiscais").select("pgdas_transmitida, atualizado_em").eq("empresa_id", empresaId).eq("competencia", competencia).maybeSingle();
+    requireThat(situacao?.pgdas_transmitida !== false || jaTransmitida === true,
+      `O PGDAS-D de ${monthLabel(competencia)} não constava como transmitido na última consulta ao SERPRO` +
+      `${situacao?.atualizado_em ? ` (${new Date(situacao.atualizado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })})` : ""}. ` +
+      "Transmita a declaração no Domínio e confirme ao gerar o DAS. Nenhuma chamada foi feita.", 409);
+
     const cred = await carregarCredenciais(admin, ctx.escritorioId);
-    const das = await gerarDas(admin, cred, ctx.company.data.cnpj, competencia, { empresaId, usuarioId: ctx.u.id });
+    let das: Awaited<ReturnType<typeof gerarDas>>;
+    try {
+      das = await gerarDas(admin, cred, ctx.company.data.cnpj, competencia, { empresaId, usuarioId: ctx.u.id });
+    } catch (e) {
+      if (e instanceof SemDeclaracaoPgdas) {
+        await admin.from("situacoes_fiscais").upsert({ empresa_id: empresaId, competencia, pgdas_transmitida: false, atualizado_em: new Date().toISOString() }, { onConflict: "empresa_id,competencia" });
+        throw new SemDeclaracaoPgdas(monthLabel(competencia));
+      }
+      throw e;
+    }
 
     const bytes = Buffer.from(das.pdfBase64, "base64");
     const id = crypto.randomUUID();
@@ -43,7 +60,7 @@ export async function POST(request: Request) {
       await persist(atual, { upserts: entradas, event: "das_emitido", detail: `${nome} emitido pelo SERPRO (${valor}, vencimento ${vencimento}).` });
     });
     await admin.from("situacoes_fiscais").upsert(
-      { empresa_id: empresaId, competencia, das_valor: das.valorTotal, das_vencimento: das.vencimento, das_pago: false, atualizado_em: new Date().toISOString() },
+      { empresa_id: empresaId, competencia, pgdas_transmitida: true, das_valor: das.valorTotal, das_vencimento: das.vencimento, das_pago: false, atualizado_em: new Date().toISOString() },
       { onConflict: "empresa_id,competencia" },
     );
 

@@ -40,9 +40,17 @@ export async function ultimaDeclaracaoPgdas(admin: ClienteAdmin, cred: Credencia
     : { transmitida: false as const, mensagem: res.mensagens.map((m) => m.texto).join(" ") };
 }
 
+/** O SERPRO responde 200 (e cobra) quando ainda não há PGDAS-D transmitido no período. */
+export class SemDeclaracaoPgdas extends DomainError {
+  constructor(competencia: string) {
+    super(`O PGDAS-D de ${competencia} ainda não foi transmitido, e sem declaração o SERPRO não gera o DAS. Transmita a declaração no Domínio e depois gere o DAS.`, 409);
+  }
+}
+
 /** PGDASD/GERARDAS12 (Emitir, cobrado): DAS do período em PDF com valores e vencimento. */
 export async function gerarDas(admin: ClienteAdmin, cred: CredenciaisSerpro, cnpj: string, competencia: string, r: Registro) {
   const res = await chamarSerpro(admin, cred, { tipo: "Emitir", idSistema: "PGDASD", idServico: "GERARDAS12", contribuinte: cnpj, dados: { periodoApuracao: periodoApuracao(competencia) } }, r);
+  if (res.mensagens.some((m) => /MSG_ISN_005/.test(m.codigo) || /n[aã]o h[aá] declara[cç][aã]o transmitida/i.test(m.texto))) throw new SemDeclaracaoPgdas(competencia);
   const das = primeiro(res.dados);
   requireThat(das?.pdf, `O SERPRO não devolveu o DAS. ${res.mensagens.map((m) => m.texto).join(" ")}`, 502);
   const det = primeiro(das.detalhamento);

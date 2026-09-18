@@ -116,17 +116,21 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
   }
 
   async function emitirDas(e: Empresa) {
-    if (!window.confirm(`Gerar o DAS de ${monthLabel(competencia)} de ${e.razao_social} no SERPRO? É uma chamada cobrada; o PDF será publicado para o cliente.`)) return;
+    const semDeclaracao = e.pgdas_transmitida === false;
+    const pergunta = semDeclaracao
+      ? `O PGDAS-D de ${monthLabel(competencia)} de ${e.razao_social} não constava como transmitido na última consulta. Você já transmitiu a declaração no Domínio? Se sim, o DAS será gerado (chamada cobrada).`
+      : `Gerar o DAS de ${monthLabel(competencia)} de ${e.razao_social} no SERPRO? É uma chamada cobrada; o PDF será publicado para o cliente.`;
+    if (!window.confirm(pergunta)) return;
     setGerandoDas(e.empresa_id);
     try {
-      const res = await fetch("/api/serpro/das", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ empresaId: e.empresa_id, competencia }) });
+      const res = await fetch("/api/serpro/das", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ empresaId: e.empresa_id, competencia, jaTransmitida: semDeclaracao }) });
       const dados = await res.json();
       if (!res.ok) throw new Error(dados.error);
       toast.success(dados.message);
-      await carregar();
     } catch (erro) {
-      toast.error((erro as Error).message);
+      toast.error((erro as Error).message, { duration: 12000 });
     } finally {
+      await carregar();
       setGerandoDas(null);
     }
   }
