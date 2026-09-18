@@ -4,6 +4,7 @@ import { CheckCircle2, KeyRound, Loader2, PlugZap, ShieldAlert } from "lucide-re
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ConfiguracaoNfse from "./configuracao-nfse";
 
 type Situacao = {
   titular: boolean;
@@ -18,7 +19,7 @@ const dataHora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateSt
 const cnpj = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 
 /** Integrações do escritório: SERPRO Integra Contador (e, em seguida, NFS-e Nacional). */
-export default function Integracoes() {
+export default function Integracoes({ empresas }: { empresas: { id: string; nome: string }[] }) {
   const [situacao, setSituacao] = useState<Situacao | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -129,16 +130,7 @@ export default function Integracoes() {
         )}
       </section>
 
-      <section className="integracao-cartao">
-        <header>
-          <PlugZap size={22} />
-          <div>
-            <h2>NFS-e Nacional • Emissor Nacional</h2>
-            <p>Emissão das notas dos clientes em municípios do padrão nacional (ex.: Luís Eduardo Magalhães - BA), com o certificado A1 de cada empresa.</p>
-          </div>
-          <span className="painel-chip neutro">Próxima etapa</span>
-        </header>
-      </section>
+      <ConfiguracaoNfse empresas={empresas} />
     </div>
   );
 }
