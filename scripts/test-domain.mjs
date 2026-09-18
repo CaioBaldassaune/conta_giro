@@ -16,6 +16,6 @@ for (const nome of MODULOS) {
   await writeFile(destino, saida);
 }
 
-const testes = ["domain", "contagiro", "traducao", "carteira", "serpro", "nfse"].map((t) => `tests/${t}.test.mjs`);
+const testes = ["domain", "contagiro", "traducao", "carteira", "serpro", "nfse", "estilos"].map((t) => `tests/${t}.test.mjs`);
 const resultado = spawnSync(process.execPath, ["--test", ...testes], { stdio: "inherit" });
 process.exit(resultado.status ?? 1);
