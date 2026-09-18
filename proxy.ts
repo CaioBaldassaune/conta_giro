@@ -1,14 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { configuracaoSupabase, MENSAGEM_CONFIGURACAO_AUSENTE } from "@/lib/supabase/config";
 
 // Renova a sessão do Supabase a cada navegação e protege os dois portais.
 // A autorização real (qual empresa, qual papel) acontece no servidor e no RLS.
 export async function proxy(request: NextRequest) {
+  const config = configuracaoSupabase();
+  if (!config) {
+    return new NextResponse(MENSAGEM_CONFIGURACAO_AUSENTE, { status: 500, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    config.url,
+    config.chave,
     {
       cookies: {
         getAll() {

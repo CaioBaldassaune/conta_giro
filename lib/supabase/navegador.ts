@@ -1,9 +1,8 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { exigirConfiguracaoSupabase } from "./config";
 
 // Cliente Supabase para componentes do navegador (login, cadastro, sair).
 export function criarClienteNavegador() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  );
+  const { url, chave } = exigirConfiguracaoSupabase();
+  return createBrowserClient(url, chave);
 }
