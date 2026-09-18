@@ -96,7 +96,7 @@ export async function consultarConvenio(ambiente: AmbienteNfse, certificado: Cer
     const c = json.parametrosConvenio;
     return c
       ? { emissorNacional: c.aderenteEmissorNacional === 1, mensagem: "O convênio cobre só o compartilhamento de dados com o ambiente nacional." }
-      : { emissorNacional: false, mensagem: String(json.mensagem ?? "Convênio não ativo no Sistema Nacional").trim().replace(/.?$/, ".") };
+      : { emissorNacional: false, mensagem: String(json.mensagem ?? "Convênio não ativo no Sistema Nacional").trim().replace(/\.?$/, ".") };
   } catch {
     return null;
   }
