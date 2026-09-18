@@ -64,3 +64,66 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .acesso-portais strong{font-size:1rem}
 .acesso-portais span{font-size:.875rem;color:var(--muted-foreground)}
 .acesso-check{flex-direction:row!important;align-items:center;font-weight:400!important}
+
+/* Painel da carteira e central de chamados (visão macro do contador) */
+.painel-carteira,.central-chamados{display:flex;flex-direction:column;gap:16px}
+.painel-indicadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.painel-indicador{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--card);text-align:left;cursor:pointer;color:inherit;font:inherit}
+.painel-indicador strong{font-size:1.6rem;line-height:1.1}
+.painel-indicador span{font-size:.8125rem;color:var(--muted-foreground)}
+.painel-indicador.ativo{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.painel-indicador.critico strong{color:#B42318}
+.painel-indicador.atencao strong{color:#B54708}
+.painel-indicador.positivo strong{color:#1E6B43}
+.painel-barra{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.painel-busca{display:flex;align-items:center;gap:8px;flex:1 1 240px;min-width:200px;border:1px solid var(--border);border-radius:8px;padding:0 10px;background:var(--card)}
+.painel-busca input{border:0;box-shadow:none;padding-left:0}
+.painel-prazo{font-size:.875rem;color:var(--muted-foreground)}
+.painel-tabela-rolagem{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.painel-tabela{width:100%;border-collapse:collapse;font-size:.875rem;min-width:960px}
+.painel-tabela th{position:sticky;top:0;background:var(--secondary);text-align:left;font-weight:600;padding:10px 12px;white-space:nowrap}
+.painel-tabela td{padding:10px 12px;border-top:1px solid var(--border);vertical-align:top}
+.painel-tabela td small{display:block;color:var(--muted-foreground);font-size:.75rem;margin-top:2px}
+.painel-tabela tr.risco-2 td:first-child{box-shadow:inset 3px 0 0 #D92D20}
+.painel-tabela tr.risco-1 td:first-child{box-shadow:inset 3px 0 0 #F79009}
+.painel-alertas{display:flex;flex-wrap:wrap;gap:4px;max-width:340px}
+.painel-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:.75rem;white-space:nowrap}
+.painel-chip.critico{background:#FEE4E2;color:#912018}
+.painel-chip.atencao{background:#FEF0C7;color:#93370D}
+.painel-chip.ok{background:#E8F6EE;color:#1E6B43}
+.painel-chip.neutro{background:var(--secondary);color:var(--secondary-foreground)}
+.painel-ok{color:#1E6B43;font-weight:600}
+.painel-alerta{color:#B54708;font-weight:600}
+.painel-cinza{color:var(--muted-foreground)}
+.painel-vazio{display:flex;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--muted-foreground);text-align:center}
+.painel-form{display:flex;flex-direction:column;gap:12px}
+.painel-form label,.central-controles label{display:flex;flex-direction:column;gap:6px;font-size:.8125rem;font-weight:600}
+.painel-form-linha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.painel-form select,.central-controles select{height:36px;border:1px solid var(--border);border-radius:8px;padding:0 8px;background:var(--card);color:inherit;font:inherit;font-weight:400}
+.central-filtros{display:flex;flex-wrap:wrap;gap:6px}
+.central-filtros button{border:1px solid var(--border);border-radius:999px;padding:6px 12px;background:var(--card);color:inherit;font:inherit;font-size:.8125rem;cursor:pointer}
+.central-filtros button.ativo{border-color:var(--primary);background:var(--secondary);color:var(--primary);font-weight:600}
+.central-corpo{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:16px;min-height:520px}
+.central-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:72svh;overflow-y:auto}
+.central-item{width:100%;display:flex;flex-direction:column;gap:4px;text-align:left;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--card);color:inherit;font:inherit;cursor:pointer}
+.central-item.ativo{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.central-item small{color:var(--muted-foreground);font-size:.75rem}
+.central-item-topo{display:flex;align-items:center;gap:8px;font-size:.75rem}
+.central-item-topo small{margin-left:auto}
+.central-detalhe{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.central-detalhe header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.central-detalhe h2{margin:0;font-size:1.1rem}
+.central-detalhe header small{color:var(--muted-foreground)}
+.central-controles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.conversa{display:flex;flex-direction:column;gap:10px}
+.conversa-mensagens{display:flex;flex-direction:column;gap:8px;max-height:46svh;overflow-y:auto;padding:4px}
+.conversa-msg{max-width:85%;border-radius:12px;padding:8px 12px;font-size:.875rem}
+.conversa-msg p{margin:2px 0 0;white-space:pre-wrap}
+.conversa-msg.abertura{align-self:stretch;max-width:none;background:var(--secondary)}
+.conversa-msg.escritorio{align-self:flex-end;background:#E6F1FA}
+.conversa-msg.cliente{align-self:flex-start;background:#F2F4F7}
+.conversa-autor{font-size:.7rem;color:var(--muted-foreground)}
+.conversa-resposta{display:flex;gap:8px;align-items:flex-end}
+.conversa-resposta textarea{flex:1}
+.request-card .conversa{margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
+@media (max-width:860px){.central-corpo{grid-template-columns:1fr}.painel-form-linha{grid-template-columns:1fr}}

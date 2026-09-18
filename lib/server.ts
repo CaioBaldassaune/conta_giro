@@ -112,7 +112,11 @@ export class SemAcesso extends DomainError {
   }
 }
 
-export async function getState(portal: Portal, companyId?: string, period = "2026-08"): Promise<WorkspaceState> {
+/**
+ * Estado da tela. Por padrão carrega só a empresa selecionada (escala para 100+
+ * empresas); `carteira: true` carrega todas, apenas para as telas que precisam.
+ */
+export async function getState(portal: Portal, companyId?: string, period = "2026-08", opcoes: { carteira?: boolean } = {}): Promise<WorkspaceState> {
   const { sb, u } = await identity();
   const a = await acessos(sb, u.id);
 
@@ -129,15 +133,20 @@ export async function getState(portal: Portal, companyId?: string, period = "202
 
   const selected = companyId && ids.includes(companyId) ? companyId : ids[0];
   const role: Role = portal === "contador" ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
-  // O contador vê a carteira inteira; o cliente carrega só a empresa escolhida.
-  const carregadas = await carregarEmpresas(sb, portal === "contador" ? ids : [selected]);
+  const comCarteira = portal === "contador" && !!opcoes.carteira;
+  const carregadas = await carregarEmpresas(sb, comCarteira ? ids : [selected]);
   const atual = carregadas.get(selected);
   requireThat(atual, "Empresa indisponível.", 404);
 
-  const companies = portal === "contador"
+  // Demais empresas vêm só com nome e versão (o seletor de empresa não precisa de mais).
+  const companies = comCarteira
     ? ids.map((id) => carregadas.get(id)!.company).filter(Boolean)
-    : (await sb.from("empresas").select("id, razao_social, versao").in("id", ids).order("razao_social")).data!
-        .map((e) => e.id === selected ? atual.company : { ...atual.company, id: e.id, name: e.razao_social, version: e.versao });
+    : (await sb.from("empresas").select("id, razao_social, versao, ativa, cnpj, demonstracao").in("id", ids).order("razao_social")).data!
+        .map((e) => e.id === selected ? atual.company : {
+          id: e.id, name: e.razao_social, version: e.versao,
+          data: { demo: e.demonstracao, cnpj: e.cnpj ?? "", email: "", phone: "", active: e.ativa,
+            tax: { regime: "competencia" as const, annex: "III" as const, municipality: "", service: "", factorR: false, version: 0, validated: false } },
+        });
 
   let audit: Audit[] = [];
   if (role === "accountant" || role === "owner") {
@@ -151,7 +160,7 @@ export async function getState(portal: Portal, companyId?: string, period = "202
 
   return {
     period: selectedPeriod,
-    portfolio: role === "accountant" ? ids.map((id) => ({ company: carregadas.get(id)!.company, records: carregadas.get(id)!.records })) : undefined,
+    portfolio: comCarteira ? ids.map((id) => ({ company: carregadas.get(id)!.company, records: carregadas.get(id)!.records })) : undefined,
     companies,
     records: filtrarParaPapel(atual.records, role),
     selectedCompany: selected,
