@@ -1,0 +1,5 @@
+import { context, fail, getState, persist, sameOrigin } from "@/lib/server";
+import { requireThat } from "@/lib/domain";
+import { applyAction } from "@/lib/contagiro";
+import { accountingAction } from "@/lib/reporting";
+export async function POST(request:Request){try{sameOrigin(request);requireThat(Number(request.headers.get("content-length")||0)<=100000,"Solicitação muito grande.",413);const raw=await request.text();requireThat(raw.length<=100000,"Solicitação muito grande.",413);const a=JSON.parse(raw);requireThat(typeof a.companyId==="string","Escolha uma empresa.");const ctx=await context(a.companyId);if(a.returnCompanyId&&a.returnCompanyId!==a.companyId)await context(a.returnCompanyId);const change=accountingAction(ctx.company,ctx.records,ctx.role,a,new Date().toISOString(),ctx.u)||applyAction(ctx.company,ctx.records,ctx.role,a,new Date().toISOString(),ctx.u);await persist(ctx,change,a.version);return Response.json({state:await getState(a.returnCompanyId||a.companyId,a.period),message:change.detail},{headers:{"Cache-Control":"no-store"}});}catch(e){return fail(e);}}

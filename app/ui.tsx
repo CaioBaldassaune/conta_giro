@@ -1,0 +1,14 @@
+"use client";
+import type { ReactNode } from "react";
+import { CircleHelp, FolderOpen, type LucideIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { stateLabels, type WorkspaceState, type Company, type Entry, type Action } from "@/lib/domain";
+export type PageKey="overview"|"finance"|"invoices"|"calendar"|"documents"|"closing"|"requests"|"portfolio"|"billing"|"settings"|"office"|"office_calendar"|"matrix"|"contacts"|"payroll"|"dre"|"accounting";
+export type ScreenProps={state:WorkspaceState;company:Company;records:Entry[];page:PageKey;busy:boolean;isAccountant:boolean;navigate:(p:PageKey)=>void;show:(name:string,data?:Record<string,any>)=>void;act:(a:Action,close?:boolean)=>Promise<boolean>;refresh:(id?:string,period?:string)=>Promise<void>;exportFile:(format:string)=>Promise<void>};
+export const docCategories:Record<string,string>={monthly:"Documentação mensal",bank:"Extratos bancários",invoice:"Notas fiscais",tax:"Guias e tributos",other:"Relatórios e outros",corporate:"Documentos da empresa",people:"Documentos pessoais",payroll:"Folha e pró-labore",notification:"Notificações da assessoria"};
+export function Status({status}:{status:string}){const tone=["simulated","paid_confirmed","reviewed","done","accepted"].includes(status)?"positive":["pending","draft","new","quoted","paid_reported","submitted"].includes(status)?"warning":"neutral";return <span className={`status ${tone}`}>{stateLabels[status]||status}</span>;}
+export function SelectField({value,onChange,options,label="Selecione"}:{value:string;onChange:(v:string)=>void;options:{value:string;label:string}[];label?:string}){return <Select value={value} onValueChange={onChange}><SelectTrigger className="select-control" aria-label={label}><SelectValue placeholder={label}/></SelectTrigger><SelectContent>{options.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>;}
+export function Field({label,children,hint}:{label:string;children:ReactNode;hint?:string}){return <label className="field"><span>{label}</span>{children}{hint&&<small>{hint}</small>}</label>;}
+export function Empty({icon:Icon=FolderOpen,title,children}:{icon?:LucideIcon;title:string;children?:ReactNode}){return <div className="empty-state"><Icon size={30}/><h3>{title}</h3>{children&&<p>{children}</p>}</div>;}
+export function Info({children,warning=false}:{children:ReactNode;warning?:boolean}){return <div className={`info-note ${warning?"warning":""}`}><CircleHelp size={18}/><div>{children}</div></div>;}
+export function Metric({label,value,detail,icon:Icon,tone=""}:{label:string;value:string;detail:string;icon:LucideIcon;tone?:string}){return <div className={`metric ${tone}`}><div className="metric-top"><span>{label}</span><Icon size={19}/></div><strong>{value}</strong><span className="metric-detail">{detail}</span></div>;}
