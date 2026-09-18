@@ -127,3 +127,23 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .conversa-resposta textarea{flex:1}
 .request-card .conversa{margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
 @media (max-width:860px){.central-corpo{grid-template-columns:1fr}.painel-form-linha{grid-template-columns:1fr}}
+
+/* Integrações e ações do SERPRO no painel */
+.integracoes{display:flex;flex-direction:column;gap:16px}
+.integracao-cartao{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:18px;display:flex;flex-direction:column;gap:14px}
+.integracao-cartao header{display:flex;align-items:flex-start;gap:12px}
+.integracao-cartao header>div{flex:1}
+.integracao-cartao h2{margin:0;font-size:1.05rem}
+.integracao-cartao header p{margin:2px 0 0;color:var(--muted-foreground);font-size:.875rem}
+.integracao-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0}
+.integracao-dados dt{font-size:.75rem;color:var(--muted-foreground)}
+.integracao-dados dd{margin:2px 0 0;font-size:.875rem}
+.integracao-acoes{display:flex;justify-content:flex-end;gap:8px}
+.integracao-historico summary{cursor:pointer;font-size:.875rem;font-weight:600}
+.integracao-historico .painel-tabela{min-width:0;margin-top:8px}
+.painel-link{display:block;border:0;background:none;padding:0;margin-top:2px;color:var(--primary);font:inherit;font-size:.75rem;text-decoration:underline;cursor:pointer}
+.painel-acoes-linha{white-space:nowrap}
+.serpro-resultados{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:50svh;overflow-y:auto}
+.serpro-resultados li{display:flex;flex-direction:column;border-radius:8px;padding:8px 10px;font-size:.8125rem}
+.serpro-resultados li.ok{background:#E8F6EE}
+.serpro-resultados li.falha{background:#FEE4E2}

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, CheckCircle2, Loader2, MessageSquare, RefreshCw, Search, Send } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, FileDown, Loader2, MessageSquare, Plus, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,11 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
   const [busca, setBusca] = useState("");
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [loteAberto, setLoteAberto] = useState(false);
+  const [consultandoSerpro, setConsultandoSerpro] = useState(false);
+  const [resultadosSerpro, setResultadosSerpro] = useState<{ empresa: string; ok: boolean; mensagem: string }[] | null>(null);
+  const [novaEmpresaAberta, setNovaEmpresaAberta] = useState(false);
+  const [empresaSemCnpj, setEmpresaSemCnpj] = useState<Empresa | null>(null);
+  const [gerandoDas, setGerandoDas] = useState<string | null>(null);
 
   const buscar = useCallback(async (): Promise<Painel> => {
     const res = await fetch(`/api/carteira?competencia=${competencia}`, { cache: "no-store" });
@@ -82,6 +87,48 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
       && (!termo || e.razao_social.toLowerCase().includes(termo) || (e.cnpj ?? "").includes(termo.replace(/\D/g, "") || "§")));
   }, [painel, filtro, busca]);
 
+  // Consulta Caixa Postal + PGDAS-D no SERPRO em partes de 20 empresas (limite por chamada).
+  async function consultarSerpro() {
+    const ids = [...selecionadas];
+    if (!ids.length) return;
+    if (!window.confirm(`Consultar ${ids.length} empresa(s) no SERPRO? Cada empresa gera 1 consulta cobrada (PGDAS-D); a Caixa Postal não é cobrada.`)) return;
+    setConsultandoSerpro(true);
+    const todos: { empresa: string; ok: boolean; mensagem: string }[] = [];
+    try {
+      for (let i = 0; i < ids.length; i += 20) {
+        const res = await fetch("/api/serpro/atualizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ empresaIds: ids.slice(i, i + 20), competencia }) });
+        const dados = await res.json();
+        if (!res.ok) throw new Error(dados.error);
+        todos.push(...dados.resultados);
+      }
+      const ok = todos.filter((r) => r.ok).length;
+      if (ok === todos.length) toast.success(`${ok} empresa(s) atualizada(s) no SERPRO.`);
+      else toast.warning(`${ok} de ${todos.length} atualizada(s). Veja os detalhes.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setResultadosSerpro(todos.length ? todos : null);
+      setConsultandoSerpro(false);
+      await carregar();
+    }
+  }
+
+  async function emitirDas(e: Empresa) {
+    if (!window.confirm(`Gerar o DAS de ${monthLabel(competencia)} de ${e.razao_social} no SERPRO? É uma chamada cobrada; o PDF será publicado para o cliente.`)) return;
+    setGerandoDas(e.empresa_id);
+    try {
+      const res = await fetch("/api/serpro/das", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ empresaId: e.empresa_id, competencia }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error(dados.error);
+      toast.success(dados.message);
+      await carregar();
+    } catch (erro) {
+      toast.error((erro as Error).message);
+    } finally {
+      setGerandoDas(null);
+    }
+  }
+
   function alternar(id: string) {
     setSelecionadas((atual) => { const s = new Set(atual); if (s.has(id)) s.delete(id); else s.add(id); return s; });
   }
@@ -106,6 +153,8 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
         <label className="painel-busca"><Search size={16} /><Input placeholder="Buscar por nome ou CNPJ" value={busca} onChange={(e) => setBusca(e.target.value)} /></label>
         <span className="painel-prazo">PGDAS-D / DAS de {monthLabel(painel.competencia)} vencem em <strong>{dateLabel(painel.prazoPgdas)}</strong></span>
         <Button variant="outline" size="sm" onClick={carregar} disabled={carregando}><RefreshCw size={15} className={carregando ? "spin" : ""} />Atualizar</Button>
+        <Button variant="outline" size="sm" onClick={() => setNovaEmpresaAberta(true)}><Plus size={15} />Nova empresa</Button>
+        <Button variant="outline" size="sm" disabled={!selecionadas.size || consultandoSerpro} onClick={consultarSerpro}>{consultandoSerpro ? <Loader2 className="spin" size={15} /> : <ShieldCheck size={15} />}Consultar SERPRO ({selecionadas.size})</Button>
         <Button size="sm" disabled={!selecionadas.size} onClick={() => setLoteAberto(true)}><Send size={15} />Abrir chamado ({selecionadas.size})</Button>
       </div>
 
@@ -121,7 +170,7 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
             {visiveis.map((e) => (
               <tr key={e.empresa_id} className={`risco-${e.risco}`}>
                 <td><input type="checkbox" aria-label={`Selecionar ${e.razao_social}`} checked={selecionadas.has(e.empresa_id)} onChange={() => alternar(e.empresa_id)} /></td>
-                <td><strong>{e.razao_social}</strong><small>{cnpjFormatado(e.cnpj)}</small></td>
+                <td><strong>{e.razao_social}</strong>{e.cnpj ? <small>{cnpjFormatado(e.cnpj)}</small> : <button type="button" className="painel-link" onClick={() => setEmpresaSemCnpj(e)}>Informar CNPJ</button>}</td>
                 <td>{e.competencia_situacao ? SITUACAO[e.competencia_situacao] ?? e.competencia_situacao : "Não aberta"}</td>
                 <td>
                   {e.pgdas_transmitida == null ? <span className="painel-cinza">Aguardando SERPRO</span>
@@ -138,13 +187,31 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
                   {e.alertas.length ? e.alertas.map((a) => <span key={a.texto} className={`painel-chip ${a.tipo}`}>{a.tipo === "critico" && <AlertTriangle size={12} />}{a.texto}</span>)
                     : <span className="painel-chip ok"><CheckCircle2 size={12} />Em dia</span>}
                 </td>
-                <td><Button variant="ghost" size="sm" onClick={() => onAbrirEmpresa(e.empresa_id)}><Building2 size={14} />Abrir</Button></td>
+                <td className="painel-acoes-linha">
+                  <Button variant="ghost" size="sm" onClick={() => onAbrirEmpresa(e.empresa_id)}><Building2 size={14} />Abrir</Button>
+                  <Button variant="ghost" size="sm" disabled={!e.cnpj || gerandoDas === e.empresa_id} title={e.cnpj ? "Gerar DAS no SERPRO e publicar para o cliente" : "Informe o CNPJ primeiro"} onClick={() => emitirDas(e)}>{gerandoDas === e.empresa_id ? <Loader2 className="spin" size={14} /> : <FileDown size={14} />}DAS</Button>
+                </td>
               </tr>
             ))}
             {!visiveis.length && <tr><td colSpan={8} className="painel-vazio">Nenhuma empresa neste filtro.</td></tr>}
           </tbody>
         </table>
       </div>
+
+      {resultadosSerpro && (
+        <Dialog open onOpenChange={(v) => !v && setResultadosSerpro(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Resultado da consulta ao SERPRO</DialogTitle></DialogHeader>
+            <ul className="serpro-resultados">
+              {resultadosSerpro.map((r) => <li key={r.empresa} className={r.ok ? "ok" : "falha"}><strong>{r.empresa}</strong><span>{r.mensagem}</span></li>)}
+            </ul>
+            <DialogFooter><Button onClick={() => setResultadosSerpro(null)}>Fechar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <NovaEmpresa aberta={novaEmpresaAberta} onFechar={() => setNovaEmpresaAberta(false)} onSalva={() => { setNovaEmpresaAberta(false); void carregar(); }} />
+      <InformarCnpj empresa={empresaSemCnpj} onFechar={() => setEmpresaSemCnpj(null)} onSalvo={() => { setEmpresaSemCnpj(null); void carregar(); }} />
 
       <ChamadoEmLote
         aberto={loteAberto}
@@ -202,6 +269,84 @@ function ChamadoEmLote({ aberto, empresas, competencia, onFechar, onEnviado }: {
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
           <Button onClick={enviar} disabled={enviando || !empresas.length}>{enviando && <Loader2 className="spin" size={15} />}Abrir e avisar clientes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NovaEmpresa({ aberta, onFechar, onSalva }: { aberta: boolean; onFechar: () => void; onSalva: () => void }) {
+  const [razaoSocial, setRazaoSocial] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [municipio, setMunicipio] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    setSalvando(true);
+    try {
+      const res = await fetch("/api/empresas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ razaoSocial, cnpj, municipio }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error(dados.error);
+      toast.success(dados.message);
+      setRazaoSocial(""); setCnpj(""); setMunicipio("");
+      onSalva();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Dialog open={aberta} onOpenChange={(v) => !v && onFechar()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Nova empresa na carteira</DialogTitle></DialogHeader>
+        <div className="painel-form">
+          <label>Razão social<Input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} /></label>
+          <div className="painel-form-linha">
+            <label>CNPJ<Input inputMode="numeric" placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></label>
+            <label>Município / UF<Input placeholder="Luís Eduardo Magalhães / BA" value={municipio} onChange={(e) => setMunicipio(e.target.value)} /></label>
+          </div>
+          <p className="painel-cinza">O CNPJ é necessário para consultar o SERPRO e emitir notas. A matriz tributária é confirmada depois, dentro da empresa.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onFechar}>Cancelar</Button>
+          <Button onClick={salvar} disabled={salvando || razaoSocial.trim().length < 2}>{salvando && <Loader2 className="spin" size={15} />}Incluir empresa</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InformarCnpj({ empresa, onFechar, onSalvo }: { empresa: Empresa | null; onFechar: () => void; onSalvo: () => void }) {
+  const [cnpj, setCnpj] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    if (!empresa) return;
+    setSalvando(true);
+    try {
+      const res = await fetch(`/api/empresas/${empresa.empresa_id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cnpj }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error(dados.error);
+      toast.success(dados.message);
+      setCnpj("");
+      onSalvo();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!empresa} onOpenChange={(v) => !v && onFechar()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>CNPJ de {empresa?.razao_social}</DialogTitle></DialogHeader>
+        <div className="painel-form"><label>CNPJ<Input inputMode="numeric" placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></label></div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onFechar}>Cancelar</Button>
+          <Button onClick={salvar} disabled={salvando || cnpj.replace(/\D/g, "").length !== 14}>{salvando && <Loader2 className="spin" size={15} />}Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

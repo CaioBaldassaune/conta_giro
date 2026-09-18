@@ -38,7 +38,8 @@ export function classificar(l: Linha, competencia: string, hoje: string): LinhaP
   else if (l.pgdas_transmitida !== true && !fechado && faltam <= 5) alertas.push({ tipo: "atencao", texto: faltam === 0 ? "Apuração vence hoje" : `Apuração vence em ${faltam} dia(s)` });
   if (l.das_pago === false && l.das_vencimento && l.das_vencimento < hoje) alertas.push({ tipo: "critico", texto: "DAS vencido" });
   if (l.situacao_fiscal === "pendencias") alertas.push({ tipo: "critico", texto: "Pendências na situação fiscal" });
-  if (l.caixa_postal_novas > 0) alertas.push({ tipo: "atencao", texto: `${l.caixa_postal_novas} mensagem(ns) na Caixa Postal` });
+  // O SERPRO informa 0 (nenhuma), 1 (uma) ou 2 (várias) mensagens novas.
+  if (l.caixa_postal_novas > 0) alertas.push({ tipo: "atencao", texto: l.caixa_postal_novas === 1 ? "1 mensagem nova na Caixa Postal" : "Mensagens novas na Caixa Postal" });
   if (l.chamados_aguardando_escritorio > 0) alertas.push({ tipo: "atencao", texto: `${l.chamados_aguardando_escritorio} chamado(s) aguardando o escritório` });
   if (l.lancamentos_pendentes > 0) alertas.push({ tipo: "atencao", texto: `${l.lancamentos_pendentes} lançamento(s) sem classificação` });
   if (l.outras_entradas_pendentes > 0) alertas.push({ tipo: "atencao", texto: `${l.outras_entradas_pendentes} outra(s) entrada(s) a esclarecer` });
