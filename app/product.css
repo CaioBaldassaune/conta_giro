@@ -149,3 +149,17 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .serpro-resultados li.falha{background:#FEE4E2}
 
 .painel-select{height:36px;border:1px solid var(--border);border-radius:8px;padding:0 8px;background:var(--card);color:inherit;font:inherit;font-weight:400;width:100%}
+
+/* Declaração PGDAS-D */
+.pgdas-dialogo{max-width:720px}
+.pgdas-linhas{display:grid;gap:8px;margin:8px 0}
+.pgdas-cabecalho,.pgdas-linha{display:grid;grid-template-columns:minmax(0,1fr) 140px 36px;gap:8px;align-items:center}
+.pgdas-cabecalho{font-size:12px;color:var(--muted-foreground,#64748b)}
+.pgdas-linha select,.pgdas-resumo select{height:36px;border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:0 8px;background:transparent;min-width:0}
+.pgdas-resumo{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
+.pgdas-resumo label{display:flex;gap:8px;align-items:center}
+.pgdas-previa{display:grid;gap:4px;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:12px;margin:8px 0}
+.pgdas-previa span{display:flex;justify-content:space-between}
+.pgdas-previa .total{border-top:1px solid var(--border,#e2e8f0);padding-top:6px;font-weight:600}
+.pgdas-confirmar{margin-top:8px}
+@media (max-width:560px){.pgdas-cabecalho,.pgdas-linha{grid-template-columns:minmax(0,1fr) 110px 36px}}

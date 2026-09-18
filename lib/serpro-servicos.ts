@@ -5,6 +5,7 @@ import "server-only";
 import { DomainError, requireThat } from "./domain";
 import { chamarSerpro, registrarProcuracao, type CredenciaisSerpro, type RespostaSerpro } from "./serpro";
 import type { ClienteAdmin } from "./supabase/admin";
+import { lerResultado, montarDeclaracao, type EntradaDeclaracao } from "./pgdas";
 
 type Registro = { empresaId?: string; usuarioId?: string };
 const periodoApuracao = (competencia: string) => competencia.replace("-", ""); // 2026-08 → 202608
@@ -91,4 +92,13 @@ export async function atualizarSituacao(admin: ClienteAdmin, cred: CredenciaisSe
 export async function verificarProcuracao(admin: ClienteAdmin, cred: CredenciaisSerpro, empresa: { id: string; cnpj: string }, usuarioId: string) {
   await chamarSerpro(admin, cred, { tipo: "Monitorar", idSistema: "CAIXAPOSTAL", idServico: "INNOVAMSG63", contribuinte: empresa.cnpj, dados: "" }, { empresaId: empresa.id, usuarioId, ignorarBloqueio: true });
   await registrarProcuracao(admin, empresa.id, "ativa", "CAIXAPOSTAL/INNOVAMSG63", "Procuração confirmada pela Caixa Postal (consulta não cobrada).");
+}
+
+/**
+ * PGDASD/TRANSDECLARACAO11 (Declarar, cobrado): com transmitir=false devolve só o cálculo (prévia);
+ * com transmitir=true entrega a declaração e devolve recibo e declaração em PDF.
+ */
+export async function declararPgdas(admin: ClienteAdmin, cred: CredenciaisSerpro, entrada: EntradaDeclaracao, r: Registro) {
+  const res = await chamarSerpro(admin, cred, { tipo: "Declarar", idSistema: "PGDASD", idServico: "TRANSDECLARACAO11", contribuinte: entrada.cnpj, dados: montarDeclaracao(entrada) }, r);
+  return { ...lerResultado(res.dados), avisos: res.mensagens.filter((m) => /^Aviso/i.test(m.codigo)).map((m) => m.texto) };
 }

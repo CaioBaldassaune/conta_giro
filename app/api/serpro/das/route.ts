@@ -22,7 +22,8 @@ export async function POST(request: Request) {
     const admin = clienteAdmin();
     // Trava de cobrança: se o SERPRO já disse que não há PGDAS-D no período, só tenta de novo
     // quando o contador confirma que transmitiu a declaração depois disso.
-    const { data: situacao } = await admin.from("situacoes_fiscais").select("pgdas_transmitida, atualizado_em").eq("empresa_id", empresaId).eq("competencia", competencia).maybeSingle();
+    const { data: situacao } = await admin.from("situacoes_fiscais").select("pgdas_transmitida, pgdas_valor_devido, atualizado_em").eq("empresa_id", empresaId).eq("competencia", competencia).maybeSingle();
+    requireThat(situacao?.pgdas_valor_devido !== 0, `A declaração de ${monthLabel(competencia)} foi transmitida sem valor devido (sem faturamento): não há DAS a gerar.`, 409);
     requireThat(situacao?.pgdas_transmitida !== false || jaTransmitida === true,
       `O PGDAS-D de ${monthLabel(competencia)} não constava como transmitido na última consulta ao SERPRO` +
       `${situacao?.atualizado_em ? ` (${new Date(situacao.atualizado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })})` : ""}. ` +

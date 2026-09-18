@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, CheckCircle2, FileDown, KeyRound, Loader2, MessageSquare, Plus, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, FileCheck2, FileDown, KeyRound, Loader2, MessageSquare, Plus, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dateLabel, monthLabel } from "@/lib/domain";
+import DeclaracaoPgdas from "./declaracao-pgdas";
 
 type Alerta = { tipo: "critico" | "atencao"; texto: string };
 type Empresa = {
@@ -14,7 +15,7 @@ type Empresa = {
   lancamentos_pendentes: number; receitas_sem_vinculo: number; notas_rascunho: number; documentos_mes: number;
   chamados_abertos: number; chamados_aguardando_escritorio: number; pgdas_transmitida: boolean | null;
   das_pago: boolean | null; das_vencimento: string | null; fiscal_atualizado_em: string | null;
-  procuracao_pendente: boolean; procuracao_mensagem: string | null;
+  procuracao_pendente: boolean; procuracao_mensagem: string | null; pgdas_valor_devido: number | null;
   alertas: Alerta[]; risco: 0 | 1 | 2;
 };
 type Painel = {
@@ -53,6 +54,7 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
   const [empresaSemCnpj, setEmpresaSemCnpj] = useState<Empresa | null>(null);
   const [gerandoDas, setGerandoDas] = useState<string | null>(null);
   const [verificando, setVerificando] = useState<string | null>(null);
+  const [declarando, setDeclarando] = useState<Empresa | null>(null);
 
   const buscar = useCallback(async (): Promise<Painel> => {
     const res = await fetch(`/api/carteira?competencia=${competencia}`, { cache: "no-store" });
@@ -196,7 +198,7 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
                 <td>{e.competencia_situacao ? SITUACAO[e.competencia_situacao] ?? e.competencia_situacao : "Não aberta"}</td>
                 <td>
                   {e.pgdas_transmitida == null ? <span className="painel-cinza">Aguardando SERPRO</span>
-                    : e.pgdas_transmitida ? <span className="painel-ok">PGDAS-D entregue</span> : <span className="painel-alerta">PGDAS-D pendente</span>}
+                    : e.pgdas_transmitida ? <span className="painel-ok">PGDAS-D entregue{e.pgdas_valor_devido === 0 ? " • sem guia" : ""}</span> : <span className="painel-alerta">PGDAS-D pendente</span>}
                   {e.das_pago != null && <small>{e.das_pago ? "DAS pago" : `DAS em aberto${e.das_vencimento ? ` • vence ${dateLabel(e.das_vencimento)}` : ""}`}</small>}
                 </td>
                 <td>
@@ -212,7 +214,8 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
                 <td className="painel-acoes-linha">
                   <Button variant="ghost" size="sm" onClick={() => onAbrirEmpresa(e.empresa_id)}><Building2 size={14} />Abrir</Button>
                   {e.procuracao_pendente && <Button variant="outline" size="sm" disabled={verificando === e.empresa_id} title={e.procuracao_mensagem ?? "Procuração pendente no e-CAC"} onClick={() => verificarProcuracao(e)}>{verificando === e.empresa_id ? <Loader2 className="spin" size={14} /> : <KeyRound size={14} />}Verificar procuração</Button>}
-                  <Button variant="ghost" size="sm" disabled={!e.cnpj || e.procuracao_pendente || gerandoDas === e.empresa_id} title={e.procuracao_pendente ? "Procuração pendente: chamada bloqueada para não gerar cobrança" : e.cnpj ? "Gerar DAS no SERPRO e publicar para o cliente" : "Informe o CNPJ primeiro"} onClick={() => emitirDas(e)}>{gerandoDas === e.empresa_id ? <Loader2 className="spin" size={14} /> : <FileDown size={14} />}DAS</Button>
+                  <Button variant="ghost" size="sm" disabled={!e.cnpj || e.procuracao_pendente} title={e.procuracao_pendente ? "Procuração pendente: chamada bloqueada para não gerar cobrança" : "Declaração do Simples (PGDAS-D) pelo SERPRO"} onClick={() => setDeclarando(e)}><FileCheck2 size={14} />PGDAS-D</Button>
+                  <Button variant="ghost" size="sm" disabled={!e.cnpj || e.procuracao_pendente || e.pgdas_valor_devido === 0 || gerandoDas === e.empresa_id} title={e.procuracao_pendente ? "Procuração pendente: chamada bloqueada para não gerar cobrança" : e.pgdas_valor_devido === 0 ? "Declaração sem valor devido: não há guia" : e.cnpj ? "Gerar DAS no SERPRO e publicar para o cliente" : "Informe o CNPJ primeiro"} onClick={() => emitirDas(e)}>{gerandoDas === e.empresa_id ? <Loader2 className="spin" size={14} /> : <FileDown size={14} />}DAS</Button>
                 </td>
               </tr>
             ))}
@@ -220,6 +223,8 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
           </tbody>
         </table>
       </div>
+
+      {declarando && <DeclaracaoPgdas empresa={{ id: declarando.empresa_id, nome: declarando.razao_social }} competencia={competencia} onFechar={() => setDeclarando(null)} onConcluida={carregar} />}
 
       {resultadosSerpro && (
         <Dialog open onOpenChange={(v) => !v && setResultadosSerpro(null)}>
