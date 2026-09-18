@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, CheckCircle2, FileDown, Loader2, MessageSquare, Plus, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, FileDown, KeyRound, Loader2, MessageSquare, Plus, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ type Empresa = {
   lancamentos_pendentes: number; receitas_sem_vinculo: number; notas_rascunho: number; documentos_mes: number;
   chamados_abertos: number; chamados_aguardando_escritorio: number; pgdas_transmitida: boolean | null;
   das_pago: boolean | null; das_vencimento: string | null; fiscal_atualizado_em: string | null;
+  procuracao_pendente: boolean; procuracao_mensagem: string | null;
   alertas: Alerta[]; risco: 0 | 1 | 2;
 };
 type Painel = {
@@ -51,6 +52,7 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
   const [novaEmpresaAberta, setNovaEmpresaAberta] = useState(false);
   const [empresaSemCnpj, setEmpresaSemCnpj] = useState<Empresa | null>(null);
   const [gerandoDas, setGerandoDas] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState<string | null>(null);
 
   const buscar = useCallback(async (): Promise<Painel> => {
     const res = await fetch(`/api/carteira?competencia=${competencia}`, { cache: "no-store" });
@@ -129,6 +131,22 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
     }
   }
 
+  // Verificação da procuração com a Caixa Postal (Monitorar): não gera cobrança.
+  async function verificarProcuracao(e: Empresa) {
+    setVerificando(e.empresa_id);
+    try {
+      const res = await fetch("/api/serpro/procuracao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ empresaId: e.empresa_id }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error(dados.error);
+      toast.success(dados.message);
+      await carregar();
+    } catch (erro) {
+      toast.error((erro as Error).message, { duration: 12000 });
+    } finally {
+      setVerificando(null);
+    }
+  }
+
   function alternar(id: string) {
     setSelecionadas((atual) => { const s = new Set(atual); if (s.has(id)) s.delete(id); else s.add(id); return s; });
   }
@@ -189,7 +207,8 @@ export default function PainelCarteira({ competencia, onAbrirEmpresa }: { compet
                 </td>
                 <td className="painel-acoes-linha">
                   <Button variant="ghost" size="sm" onClick={() => onAbrirEmpresa(e.empresa_id)}><Building2 size={14} />Abrir</Button>
-                  <Button variant="ghost" size="sm" disabled={!e.cnpj || gerandoDas === e.empresa_id} title={e.cnpj ? "Gerar DAS no SERPRO e publicar para o cliente" : "Informe o CNPJ primeiro"} onClick={() => emitirDas(e)}>{gerandoDas === e.empresa_id ? <Loader2 className="spin" size={14} /> : <FileDown size={14} />}DAS</Button>
+                  {e.procuracao_pendente && <Button variant="outline" size="sm" disabled={verificando === e.empresa_id} title={e.procuracao_mensagem ?? "Procuração pendente no e-CAC"} onClick={() => verificarProcuracao(e)}>{verificando === e.empresa_id ? <Loader2 className="spin" size={14} /> : <KeyRound size={14} />}Verificar procuração</Button>}
+                  <Button variant="ghost" size="sm" disabled={!e.cnpj || e.procuracao_pendente || gerandoDas === e.empresa_id} title={e.procuracao_pendente ? "Procuração pendente: chamada bloqueada para não gerar cobrança" : e.cnpj ? "Gerar DAS no SERPRO e publicar para o cliente" : "Informe o CNPJ primeiro"} onClick={() => emitirDas(e)}>{gerandoDas === e.empresa_id ? <Loader2 className="spin" size={14} /> : <FileDown size={14} />}DAS</Button>
                 </td>
               </tr>
             ))}

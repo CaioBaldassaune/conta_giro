@@ -37,6 +37,7 @@ export function classificar(l: Linha, competencia: string, hoje: string): LinhaP
   else if (l.pgdas_transmitida == null && !fechado && faltam < 0) alertas.push({ tipo: "critico", texto: "Apuração atrasada" });
   else if (l.pgdas_transmitida !== true && !fechado && faltam <= 5) alertas.push({ tipo: "atencao", texto: faltam === 0 ? "Apuração vence hoje" : `Apuração vence em ${faltam} dia(s)` });
   if (l.das_pago === false && l.das_vencimento && l.das_vencimento < hoje) alertas.push({ tipo: "critico", texto: "DAS vencido" });
+  if (l.procuracao_pendente) alertas.push({ tipo: "critico", texto: "Procuração e-CAC pendente" });
   if (l.situacao_fiscal === "pendencias") alertas.push({ tipo: "critico", texto: "Pendências na situação fiscal" });
   // O SERPRO informa 0 (nenhuma), 1 (uma) ou 2 (várias) mensagens novas.
   if (l.caixa_postal_novas > 0) alertas.push({ tipo: "atencao", texto: l.caixa_postal_novas === 1 ? "1 mensagem nova na Caixa Postal" : "Mensagens novas na Caixa Postal" });

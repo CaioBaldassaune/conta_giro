@@ -28,6 +28,12 @@ test("dados do SERPRO têm prioridade: PGDAS-D entregue não alerta; DAS vencido
   assert.ok(textos(vencido).includes("DAS vencido"));
 });
 
+test("procuração pendente no e-CAC é crítica", () => {
+  const l = classificar({ ...base, competencia_situacao: "revisada", procuracao_pendente: true }, "2026-08", "2026-09-10");
+  assert.equal(l.risco, 2);
+  assert.ok(textos(l).includes("Procuração e-CAC pendente"));
+});
+
 test("chamados aguardando o escritório e pendências aparecem como atenção", () => {
   const l = classificar({ ...base, competencia_situacao: "revisada", chamados_aguardando_escritorio: 2, lancamentos_pendentes: 5 }, "2026-08", "2026-09-10");
   assert.equal(l.risco, 1);

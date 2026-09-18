@@ -123,13 +123,38 @@ export async function carregarCredenciais(admin: ClienteAdmin, escritorioId: str
 export type RespostaSerpro = { status: number; mensagens: Mensagem[]; dados: unknown };
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const cobrado = (tipo: string) => !["Apoiar", "Monitorar"].includes(tipo);
+
+/** Mensagem padrão quando a empresa está com procuração pendente (sem nova chamada cobrada). */
+export class ProcuracaoPendente extends DomainError {
+  constructor(contribuinte: string, detalhe?: string | null) {
+    super(
+      `Procuração pendente no e-CAC para o CNPJ ${contribuinte}: o ContaGiro bloqueou a chamada para não gerar cobrança. ` +
+      `Depois que o cliente outorgar a procuração ao escritório, use "Verificar procuração" (consulta não cobrada).` +
+      (detalhe ? ` Última resposta do SERPRO: ${detalhe}` : ""),
+      409,
+    );
+  }
+}
+
+async function registrarProcuracao(admin: ClienteAdmin, empresaId: string, situacao: "pendente" | "ativa", servico: string, mensagem: string | null) {
+  await admin.from("procuracoes_serpro").upsert(
+    { empresa_id: empresaId, situacao, servico_negado: situacao === "pendente" ? servico : null, mensagem, verificada_em: new Date().toISOString() },
+    { onConflict: "empresa_id" },
+  );
+}
 
 export async function chamarSerpro(
   admin: ClienteAdmin,
   cred: CredenciaisSerpro,
   pedido: Pedido,
-  registro: { empresaId?: string; usuarioId?: string },
+  registro: { empresaId?: string; usuarioId?: string; ignorarBloqueio?: boolean },
 ): Promise<RespostaSerpro> {
+  // Empresa sem procuração: não gasta chamada cobrada (o SERPRO cobra também o 403).
+  if (registro.empresaId && cobrado(pedido.tipo) && !registro.ignorarBloqueio) {
+    const { data: procuracao } = await admin.from("procuracoes_serpro").select("situacao, mensagem").eq("empresa_id", registro.empresaId).maybeSingle();
+    if (procuracao?.situacao === "pendente") throw new ProcuracaoPendente(pedido.contribuinte, procuracao.mensagem);
+  }
   const corpo = JSON.stringify(montarCorpo(cred.cnpjContratante, pedido));
   const tag = etiquetaRequisicao(cred.cnpjContratante, pedido.contribuinte);
   let res: RespostaHttp | null = null;
@@ -159,7 +184,7 @@ export async function chamarSerpro(
     id_sistema: pedido.idSistema,
     id_servico: pedido.idServico,
     status_http: res!.status,
-    bilhetada: !["Apoiar", "Monitorar"].includes(pedido.tipo) && !NAO_BILHETADOS.has(res!.status),
+    bilhetada: cobrado(pedido.tipo) && !NAO_BILHETADOS.has(res!.status),
     mensagem: mensagens.map((m) => `${m.codigo} ${m.texto}`).join(" | ").slice(0, 1000) || null,
     x_request_tag: tag,
     duracao_ms: Date.now() - inicio,
@@ -169,10 +194,17 @@ export async function chamarSerpro(
   if (res!.status >= 400) {
     const texto = mensagens.map((m) => m.texto).join(" ") || `HTTP ${res!.status}`;
     const semProcuracao = mensagens.some((m) => /ICGERENCIADOR-0(22|32)/.test(m.codigo)) || /procura[cç][aã]o/i.test(texto);
+    if (semProcuracao && registro.empresaId) {
+      await registrarProcuracao(admin, registro.empresaId, "pendente", `${pedido.idSistema}/${pedido.idServico}`, mensagens.map((m) => `${m.codigo} ${m.texto}`).join(" | ").slice(0, 1000));
+    }
     throw new DomainError(
       semProcuracao ? `Sem procuração no e-CAC para este contribuinte (${pedido.contribuinte}). ${texto}` : `SERPRO: ${texto}`,
       res!.status === 404 ? 404 : res!.status === 403 ? 403 : 502,
     );
   }
+  // Uma chamada cobrada bem-sucedida comprova a procuração para aquele serviço.
+  if (registro.empresaId && cobrado(pedido.tipo)) await registrarProcuracao(admin, registro.empresaId, "ativa", `${pedido.idSistema}/${pedido.idServico}`, null);
   return { status: res!.status, mensagens, dados };
 }
+
+export { registrarProcuracao };

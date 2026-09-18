@@ -3,7 +3,7 @@
 
 import "server-only";
 import { DomainError, requireThat } from "./domain";
-import { chamarSerpro, type CredenciaisSerpro, type RespostaSerpro } from "./serpro";
+import { chamarSerpro, registrarProcuracao, type CredenciaisSerpro, type RespostaSerpro } from "./serpro";
 import type { ClienteAdmin } from "./supabase/admin";
 
 type Registro = { empresaId?: string; usuarioId?: string };
@@ -61,10 +61,9 @@ export async function gerarDas(admin: ClienteAdmin, cred: CredenciaisSerpro, cnp
  */
 export async function atualizarSituacao(admin: ClienteAdmin, cred: CredenciaisSerpro, empresa: { id: string; cnpj: string }, competencia: string, usuarioId: string) {
   const r = { empresaId: empresa.id, usuarioId };
-  const [caixa, pgdas] = await Promise.all([
-    indicadorCaixaPostal(admin, cred, empresa.cnpj, r),
-    ultimaDeclaracaoPgdas(admin, cred, empresa.cnpj, competencia, r),
-  ]);
+  // Primeiro a Caixa Postal (não cobrada): se faltar procuração, para aqui sem custo.
+  const caixa = await indicadorCaixaPostal(admin, cred, empresa.cnpj, r);
+  const pgdas = await ultimaDeclaracaoPgdas(admin, cred, empresa.cnpj, competencia, r);
   const { error } = await admin.from("situacoes_fiscais").upsert({
     empresa_id: empresa.id,
     competencia,
@@ -74,4 +73,14 @@ export async function atualizarSituacao(admin: ClienteAdmin, cred: CredenciaisSe
   }, { onConflict: "empresa_id,competencia" });
   if (error) throw new DomainError(`Situação consultada, mas não foi possível gravar: ${error.message}`, 500);
   return { caixaPostal: caixa, pgdasTransmitida: pgdas.transmitida };
+}
+
+/**
+ * Verifica a procuração sem custo (Caixa Postal / Monitorar). Se o SERPRO aceitar, a empresa
+ * sai de "pendente". Observação: comprova o serviço Caixa Postal (00006); se o PGDAS-D (00146)
+ * não tiver sido outorgado, a próxima consulta cobrada volta a marcar a pendência.
+ */
+export async function verificarProcuracao(admin: ClienteAdmin, cred: CredenciaisSerpro, empresa: { id: string; cnpj: string }, usuarioId: string) {
+  await chamarSerpro(admin, cred, { tipo: "Monitorar", idSistema: "CAIXAPOSTAL", idServico: "INNOVAMSG63", contribuinte: empresa.cnpj, dados: "" }, { empresaId: empresa.id, usuarioId, ignorarBloqueio: true });
+  await registrarProcuracao(admin, empresa.id, "ativa", "CAIXAPOSTAL/INNOVAMSG63", "Procuração confirmada pela Caixa Postal (consulta não cobrada).");
 }
