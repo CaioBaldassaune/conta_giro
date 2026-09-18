@@ -1,53 +1,161 @@
-import { env } from "cloudflare:workers";
-import { headers } from "next/headers";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
-import { DomainError, requireThat, visibleKinds, type Company, type Entry, type Role, type Change, type WorkspaceState } from "./domain";
-import { demoCompany, demoRecords } from "./seed";
-import { RECORD_UPSERT_SQL, SEED_RECORDS_SQL } from "./persistence-query";
+import { criarClienteServidor, type ClienteSupabase } from "@/lib/supabase/servidor";
+import { DomainError, requireThat, visibleKinds, type Audit, type Change, type Entry, type Role, type WorkspaceState } from "./domain";
+import { carregarEmpresas, ConflitoDeVersao, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";
+import { PAPEIS } from "./traducao";
 
-type DB = {prepare:(sql:string)=>any;batch:(statements:any[])=>Promise<any[]>};
-export function database():DB {const db=(env as unknown as {DB:DB}).DB;if(!db)throw new DomainError("O armazenamento ainda está sendo preparado. Tente novamente em instantes.",503);return db;}
-export function bucket():any {const b=(env as unknown as {DOCUMENTS:any}).DOCUMENTS;if(!b)throw new DomainError("Armazenamento de documentos indisponível.",503);return b;}
-export async function identity(){const user=await getChatGPTUser();const h=await headers();const id=h.get("oai-authenticated-user-id");requireThat(user&&id,"Entre com sua conta para acessar o portal.",401);return {...user,id};}
-export function sameOrigin(request:Request){const origin=request.headers.get("origin"),site=new URL(request.url);requireThat(origin&&new URL(origin).host===site.host,"Origem da solicitação inválida.",403);}
-export function fail(e:unknown){const status=e instanceof DomainError?e.status:500;return Response.json({error:e instanceof DomainError?e.message:"Não foi possível concluir. Nenhuma confirmação de sucesso foi registrada. Tente novamente."},{status,headers:{"Cache-Control":"no-store"}});}
-export async function getMembership(){const u=await identity(),db=database();let m=await db.prepare("SELECT * FROM members WHERE user_id = ? LIMIT 1").bind(u.id).first();
-  if(!m){
-    // Each identity gets its own isolated demonstration workspace. No membership is granted to an existing workspace.
-    const workspaceId=crypto.randomUUID(),memberId=crypto.randomUUID(),now=new Date().toISOString();
-    const names=["Aurora Serviços Administrativos","Estúdio Horizonte","Prisma Engenharia"];
-    const statements=[db.prepare("INSERT OR IGNORE INTO workspaces (id,owner_id,name,created_at) VALUES (?,?,?,?)").bind(workspaceId,u.id,"ContaGiro Contabilidade",now),db.prepare("INSERT INTO members (id,workspace_id,user_id,email,role,company_id) SELECT ?,?,?,?,'accountant',NULL WHERE EXISTS (SELECT 1 FROM workspaces WHERE id = ?)").bind(memberId,workspaceId,u.id,u.email,workspaceId)];
-    names.forEach((name,i)=>{const c=demoCompany(crypto.randomUUID(),name);statements.push(db.prepare("INSERT INTO companies (id,workspace_id,name,data,version) SELECT ?,?,?,?,0 WHERE EXISTS (SELECT 1 FROM workspaces WHERE id = ?)").bind(c.id,workspaceId,c.name,JSON.stringify(c.data),workspaceId));statements.push(db.prepare(SEED_RECORDS_SQL).bind(c.id,now,JSON.stringify(demoRecords(c.id,i)),c.id));});
-    try{await db.batch(statements);}catch(e){const existing=await db.prepare("SELECT id FROM members WHERE user_id = ? LIMIT 1").bind(u.id).first();if(!existing)throw e;}
-    m=await db.prepare("SELECT * FROM members WHERE user_id = ? LIMIT 1").bind(u.id).first();
-  }requireThat(m,"Acesso não habilitado.",403);return {u,m,db};
-}
-export async function context(companyId:string){const {u,m,db}=await getMembership();const row=await db.prepare("SELECT * FROM companies WHERE id = ? AND workspace_id = ?").bind(companyId,m.workspace_id).first();
-  requireThat(row&&(!m.company_id||m.company_id===companyId),"Empresa não disponível para este acesso.",404);
-  const company:Company={id:row.id,name:row.name,version:row.version,data:JSON.parse(row.data)};
-  const result=await db.prepare("SELECT id,kind,period,data FROM records WHERE company_id = ? ORDER BY updated_at, id").bind(companyId).all();
-  return {u,m,db,company,records:result.results.map((r:any)=>({...r,data:JSON.parse(r.data)})) as Entry[],role:m.role as Role};
-}
-export async function getState(companyId?:string,period="2026-08"):Promise<WorkspaceState>{const {u,m,db}=await getMembership();const rows=await db.prepare("SELECT * FROM companies WHERE workspace_id = ? AND (? IS NULL OR id = ?) ORDER BY name").bind(m.workspace_id,m.company_id,m.company_id).all();
-  const companies:Company[]=rows.results.map((r:any)=>({id:r.id,name:r.name,data:JSON.parse(r.data),version:r.version}));
-  const selected=companyId||companies[0]?.id;requireThat(companies.some(c=>c.id===selected),"Empresa indisponível.",404);
-  const c=await context(selected),kindSet=visibleKinds(c.role);
-  const logs=c.role==="accountant"||c.role==="owner"?(await db.prepare("SELECT id,actor_email,action,detail,created_at FROM audit WHERE company_id = ? ORDER BY created_at DESC LIMIT 60").bind(selected).all()).results:[];
-  const visibleDocIds=new Set(c.records.filter(r=>r.kind==="document"&&(c.role!=="issuer"||r.data.category==="invoice")&&(r.data.category!=="people"||["owner","accountant"].includes(c.role))).map(r=>r.id));
-  const visible=c.records.filter(r=>kindSet.includes(r.kind)&&(r.kind!=="document_event"||visibleDocIds.has(r.data.documentId))&&(!["employee","payroll"].includes(r.kind)||["owner","accountant"].includes(c.role))&&(!["lead","task","accounting","journal","tax_version"].includes(r.kind)||c.role==="accountant")&&(r.kind!=="document"||r.data.category!=="people"||["owner","accountant"].includes(c.role))&&(c.role!=="issuer"||r.kind!=="document"||r.data.category==="invoice")&&(c.role!=="issuer"||r.kind!=="contact"||["customer","both"].includes(r.data.contactType))).map(r=>c.role==="issuer"&&r.kind==="period"?{...r,data:{status:r.data.status}}:!["owner","accountant"].includes(c.role)&&r.kind==="period"?{...r,data:{status:r.data.status,bankConfirmed:r.data.bankConfirmed,revenueConfirmed:r.data.revenueConfirmed,noMovement:r.data.noMovement,lastBatch:r.data.lastBatch}}:r);
-  let portfolio:WorkspaceState["portfolio"]=undefined;
-  if(c.role==="accountant"){
-    const all=await db.prepare("SELECT r.company_id,r.id,r.kind,r.period,r.data FROM records r JOIN companies c ON c.id=r.company_id WHERE c.workspace_id=? AND (? IS NULL OR c.id=?) ORDER BY r.period,r.id").bind(m.workspace_id,m.company_id,m.company_id).all();
-    portfolio=companies.map(company=>({company,records:all.results.filter((r:any)=>r.company_id===company.id).map((r:any)=>({id:r.id,kind:r.kind,period:r.period,data:JSON.parse(r.data)}))}));
+export type Portal = "contador" | "cliente";
+
+/** Portal da requisição: parâmetro explícito ou a página que fez a chamada (Referer). */
+export function portalDe(request: Request, explicito?: unknown): Portal {
+  if (explicito === "cliente" || explicito === "contador") return explicito;
+  const origem = request.headers.get("referer") ?? "";
+  try {
+    return new URL(origem).pathname.startsWith("/cliente") ? "cliente" : "contador";
+  } catch {
+    return "contador";
   }
-  const available=c.records.filter(r=>r.kind==="period").map(r=>r.period);
-  const selectedPeriod=available.includes(period)?period:available.sort().at(-1)||"2026-08";
-  return {period:selectedPeriod,portfolio,companies,records:visible,selectedCompany:selected,audit:logs,user:{name:u.displayName,email:u.email,role:c.role}};
 }
-export async function persist(ctx:Awaited<ReturnType<typeof context>>,change:Change,expected:number){
-  requireThat(Number.isInteger(expected)&&expected===ctx.company.version,"Os dados mudaram. Atualize a página e revise sua ação.",409);const now=new Date().toISOString(),id=ctx.company.id,db=ctx.db;
-  const statements=[db.prepare(RECORD_UPSERT_SQL).bind(id,now,JSON.stringify(change.upserts),id,expected)];
-  statements.push(db.prepare("INSERT INTO audit (id,company_id,actor_id,actor_email,action,detail,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM companies WHERE id = ? AND version = ?)").bind(crypto.randomUUID(),id,ctx.u.id,ctx.u.email,change.event,change.detail,now,id,expected));
-  statements.push(change.company?db.prepare("UPDATE companies SET data = ?, name = ?, version = version + 1 WHERE id = ? AND version = ?").bind(JSON.stringify(change.company.data),change.company.name,id,expected):db.prepare("UPDATE companies SET version = version + 1 WHERE id = ? AND version = ?").bind(id,expected));
-  const results=await db.batch(statements);requireThat(results[results.length-1].meta.changes===1,"Outra pessoa alterou os dados. Atualize e tente novamente.",409);
+
+export async function identity() {
+  const sb = await criarClienteServidor();
+  const { data: { user } } = await sb.auth.getUser();
+  requireThat(user, "Entre com sua conta para acessar o portal.", 401);
+  const nome = (user.user_metadata?.nome as string | undefined) || user.email || "Usuário";
+  return { sb, u: { id: user.id, email: user.email ?? "", displayName: nome } };
+}
+
+export function sameOrigin(request: Request) {
+  const origin = request.headers.get("origin"), site = new URL(request.url);
+  requireThat(origin && new URL(origin).host === site.host, "Origem da solicitação inválida.", 403);
+}
+
+export function fail(e: unknown) {
+  const status = e instanceof DomainError ? e.status : 500;
+  if (!(e instanceof DomainError)) console.error(e);
+  return Response.json(
+    { error: e instanceof DomainError ? e.message : "Não foi possível concluir. Nenhuma confirmação de sucesso foi registrada. Tente novamente." },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+/** Escritórios em que o usuário é equipe e empresas em que é usuário do cliente. */
+export async function acessos(sb: ClienteSupabase, usuarioId: string) {
+  const [equipe, cliente] = await Promise.all([
+    sb.from("membros_escritorio").select("escritorio_id, papel").eq("usuario_id", usuarioId),
+    sb.from("membros_empresa").select("empresa_id, papel").eq("usuario_id", usuarioId),
+  ]);
+  return {
+    escritorios: (equipe.data ?? []).map((m) => m.escritorio_id as string),
+    empresasCliente: new Map((cliente.data ?? []).map((m) => [m.empresa_id as string, m.papel as string])),
+  };
+}
+
+async function papelNaEmpresa(sb: ClienteSupabase, usuarioId: string, empresa: EmpresaCarregada): Promise<Role | null> {
+  const a = await acessos(sb, usuarioId);
+  if (a.escritorios.includes(empresa.escritorioId)) return "accountant";
+  const papel = a.empresasCliente.get(empresa.company.id);
+  return papel ? (PAPEIS.regra(papel) as Role) : null;
+}
+
+export async function context(companyId: string) {
+  requireThat(typeof companyId === "string" && companyId, "Escolha uma empresa.");
+  const { sb, u } = await identity();
+  const empresa = (await carregarEmpresas(sb, [companyId])).get(companyId);
+  requireThat(empresa, "Empresa não disponível para este acesso.", 404);
+  const role = await papelNaEmpresa(sb, u.id, empresa);
+  requireThat(role, "Empresa não disponível para este acesso.", 404);
+  return { sb, u, empresa, company: empresa.company, records: empresa.records, role, escritorioId: empresa.escritorioId };
+}
+export type Contexto = Awaited<ReturnType<typeof context>>;
+
+export async function persist(ctx: Contexto, change: Change) {
+  await gravarAlteracoes(ctx.sb, ctx.empresa, ctx.u.id, change);
+}
+
+/**
+ * Executa carregar → aplicar regra → gravar. Se outra pessoa gravou na mesma
+ * empresa no meio do caminho, recarrega e reaplica a regra sobre os dados novos
+ * (em vez de devolver erro ao usuário). Desiste após 3 tentativas.
+ */
+export async function comRetentativa<T>(operacao: () => Promise<T>): Promise<T> {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await operacao();
+    } catch (e) {
+      if (!(e instanceof ConflitoDeVersao) || tentativa >= 3) throw e;
+    }
+  }
+}
+
+// Regras de visibilidade herdadas da versão anterior (o RLS já filtra por papel;
+// aqui também se reduzem campos que alguns perfis não precisam ver).
+function filtrarParaPapel(records: Entry[], role: Role): Entry[] {
+  const kindSet = visibleKinds(role);
+  const visibleDocIds = new Set(records.filter((r) => r.kind === "document" && (role !== "issuer" || r.data.category === "invoice")
+    && (r.data.category !== "people" || ["owner", "accountant"].includes(role))).map((r) => r.id));
+  return records
+    .filter((r) => kindSet.includes(r.kind)
+      && (r.kind !== "document_event" || visibleDocIds.has(r.data.documentId))
+      && (!["employee", "payroll"].includes(r.kind) || ["owner", "accountant"].includes(role))
+      && (!["lead", "task", "accounting", "journal", "tax_version"].includes(r.kind) || role === "accountant")
+      && (r.kind !== "document" || visibleDocIds.has(r.id))
+      && (role !== "issuer" || r.kind !== "contact" || ["customer", "both"].includes(r.data.contactType)))
+    .map((r) => role === "issuer" && r.kind === "period" ? { ...r, data: { status: r.data.status } }
+      : !["owner", "accountant"].includes(role) && r.kind === "period"
+        ? { ...r, data: { status: r.data.status, bankConfirmed: r.data.bankConfirmed, revenueConfirmed: r.data.revenueConfirmed, noMovement: r.data.noMovement, lastBatch: r.data.lastBatch } }
+        : r);
+}
+
+export class SemAcesso extends DomainError {
+  constructor(public motivo: "sem_escritorio" | "sem_empresa" | "sem_convite") {
+    super(motivo === "sem_convite" ? "Seu acesso ao portal do cliente depende de um convite do escritório." : "Cadastre o escritório e a primeira empresa para começar.", 403);
+  }
+}
+
+export async function getState(portal: Portal, companyId?: string, period = "2026-08"): Promise<WorkspaceState> {
+  const { sb, u } = await identity();
+  const a = await acessos(sb, u.id);
+
+  let ids: string[];
+  if (portal === "contador") {
+    if (!a.escritorios.length) throw new SemAcesso("sem_escritorio");
+    const { data } = await sb.from("empresas").select("id").in("escritorio_id", a.escritorios).order("razao_social");
+    ids = (data ?? []).map((e) => e.id as string);
+    if (!ids.length) throw new SemAcesso("sem_empresa");
+  } else {
+    ids = [...a.empresasCliente.keys()];
+    if (!ids.length) throw new SemAcesso("sem_convite");
+  }
+
+  const selected = companyId && ids.includes(companyId) ? companyId : ids[0];
+  const role: Role = portal === "contador" ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
+  // O contador vê a carteira inteira; o cliente carrega só a empresa escolhida.
+  const carregadas = await carregarEmpresas(sb, portal === "contador" ? ids : [selected]);
+  const atual = carregadas.get(selected);
+  requireThat(atual, "Empresa indisponível.", 404);
+
+  const companies = portal === "contador"
+    ? ids.map((id) => carregadas.get(id)!.company).filter(Boolean)
+    : (await sb.from("empresas").select("id, razao_social, versao").in("id", ids).order("razao_social")).data!
+        .map((e) => e.id === selected ? atual.company : { ...atual.company, id: e.id, name: e.razao_social, version: e.versao });
+
+  let audit: Audit[] = [];
+  if (role === "accountant" || role === "owner") {
+    const { data } = await sb.from("registros_auditoria").select("id, ator_email, acao, detalhe, criado_em")
+      .eq("empresa_id", selected).order("criado_em", { ascending: false }).limit(60);
+    audit = (data ?? []).map((r) => ({ id: String(r.id), actor_email: r.ator_email, action: r.acao, detail: r.detalhe, created_at: r.criado_em }));
+  }
+
+  const available = atual.records.filter((r) => r.kind === "period").map((r) => r.period);
+  const selectedPeriod = available.includes(period) ? period : available.sort().at(-1) || "2026-08";
+
+  return {
+    period: selectedPeriod,
+    portfolio: role === "accountant" ? ids.map((id) => ({ company: carregadas.get(id)!.company, records: carregadas.get(id)!.records })) : undefined,
+    companies,
+    records: filtrarParaPapel(atual.records, role),
+    selectedCompany: selected,
+    audit,
+    user: { name: u.displayName, email: u.email, role },
+  };
 }

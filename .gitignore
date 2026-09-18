@@ -42,3 +42,4 @@ next-env.d.ts
 /work/
 /.domain-tests/
 *.tsbuildinfo
+!.env.example

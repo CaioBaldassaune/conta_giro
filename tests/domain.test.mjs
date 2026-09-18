@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
-import { DatabaseSync } from "node:sqlite";
 import { allowed,closeGates,getPeriod,inPeriod,parseMoney,reduceAction,taxEstimate,totals,validDate,visibleKinds } from "../.domain-tests/domain.mjs";
 import { parseStatement,suggestedCategory } from "../.domain-tests/importer.mjs";
 import { demoCompany,demoRecords } from "../.domain-tests/seed.mjs";
-import { RECORD_UPSERT_SQL, SEED_RECORDS_SQL } from "../.domain-tests/persistence-query.mjs";
 const company=()=>{const c=demoCompany("tenant-A","Aurora");c.data.tax.confirmedAt="2026-08-01T00:00:00Z";return c;};const records=()=>demoRecords("tenant-A");
 const apply=(rows,change)=>{const map=new Map(rows.map(r=>[r.id,r]));change.upserts.forEach(r=>map.set(r.id,r));return [...map.values()];};
 test("money uses cents and rejects malformed or unsafe amounts",()=>{assert.equal(parseMoney("R$ 1.234,56"),123456);assert.equal(parseMoney("-89.90"),-8990);assert.equal(parseMoney("1.234"),123400);assert.throws(()=>parseMoney("1,234,56"));assert.throws(()=>parseMoney("Infinity"));assert.equal(validDate("2026-02-31"),false);});
@@ -19,15 +16,3 @@ test("local tax estimate uses competence history under cash regime and suspends 
 test("extra request acceptance creates one internal charge; payment report is not confirmation",()=>{let rows=records();rows=apply(rows,reduceAction(company(),rows,"accountant",{type:"quote_request",id:"tenant-A:req1",amount:"250,00",scope:"Alterar endereço"}));rows=apply(rows,reduceAction(company(),rows,"owner",{type:"accept_quote",id:"tenant-A:req1"}));const charge=rows.find(r=>r.kind==="charge"&&r.data.source==="extra");assert.equal(charge.data.amount,25000);assert.throws(()=>reduceAction(company(),rows,"owner",{type:"accept_quote",id:"tenant-A:req1"}),/disponível/);rows=apply(rows,reduceAction(company(),rows,"owner",{type:"report_charge",id:charge.id}));assert.equal(rows.find(r=>r.id===charge.id).data.status,"paid_reported");});
 test("CSV preserves quoted descriptions, BRL and ambiguous duplicates for review",()=>{const result=parseStatement('\ufeffData;Descrição;Valor\n01/08/2026;"Software; assinatura";-1.234,56\n01/08/2026;"Software; assinatura";-1.234,56\n',"a.csv");assert.equal(result.length,2);assert.equal(result[0].amount,-123456);assert.equal(result[0].description,"Software; assinatura");assert.equal(result[0].possibleDuplicate,true);assert.throws(()=>parseStatement("Data;Descrição;Valor\n31/02/2026;Erro;100,00","a.csv"),/Data inválida/);});
 test("OFX SGML and XML parse cents, dates and bank identifiers",()=>{const sgml='<OFX><STMTTRN><DTPOSTED>20260805120000[-3:BRT]\n<TRNAMT>-279.00\n<FITID>abc\n<MEMO>VIVO EMPRESAS\n</STMTTRN></OFX>';assert.deepEqual(parseStatement(sgml,"b.ofx")[0],{date:"2026-08-05",description:"VIVO EMPRESAS",amount:-27900,fitId:"abc",line:1,possibleDuplicate:false});const xml='<OFX><STMTTRN><DTPOSTED>20260806</DTPOSTED><TRNAMT>100.01</TRNAMT><FITID>x2</FITID><NAME>CLIENTE</NAME></STMTTRN></OFX>';assert.equal(parseStatement(xml,"b.ofx")[0].amount,10001);});
-test("database bulk persistence handles 500 rows, rejects stale changes and isolates tenants",async()=>{
- const db=new DatabaseSync(":memory:");db.exec(await readFile("drizzle/0000_chief_the_hand.sql","utf8"));
- db.prepare("INSERT INTO companies(id,workspace_id,name,data,version) VALUES ('A','W','A','{}',0)").run();
- const seed=db.prepare(SEED_RECORDS_SQL);seed.run("A","now",JSON.stringify([{id:"initial",kind:"period",period:"2026-08",data:{status:"open"}}]),"A");
- assert.equal(seed.run("OTHER","now",JSON.stringify([{id:"forbidden",kind:"period",period:"2026-08",data:{}}]),"OTHER").changes,0);
- const rows=Array.from({length:500},(_,i)=>({id:`row-${i}`,kind:"transaction",period:"2026-08",data:{amount:i+1,description:"Empresa, com acentos e aspas: \"teste\""}}));
- const write=db.prepare(RECORD_UPSERT_SQL);db.exec("BEGIN");const saved=write.run("A","now",JSON.stringify(rows),"A",0);assert.equal(saved.changes,500);
- db.prepare("UPDATE companies SET version=version+1 WHERE id=? AND version=?").run("A",0);db.exec("COMMIT");
- const stale=write.run("A","later",JSON.stringify([{...rows[0],data:{amount:999}}]),"A",0);assert.equal(stale.changes,0);
- assert.equal(JSON.parse(db.prepare("SELECT data FROM records WHERE id='row-0'").get().data).amount,1);
- assert.equal(db.prepare("SELECT id FROM companies WHERE id=? AND workspace_id=?").get("A","OTHER"),undefined);db.close();
-});
