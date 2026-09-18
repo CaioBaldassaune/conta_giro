@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from '@/components/ui/dialog';
-import { categoryLabels,monthLabel,money,type Action,type Company,type WorkspaceState } from '@/lib/domain';
+import { categoryLabels,mesApuracao,monthLabel,money,type Action,type Company,type WorkspaceState } from '@/lib/domain';
 import { issSuggestion } from '@/lib/contagiro';
 import { accountingConfig } from '@/lib/reporting';
 import { Field,Info,SelectField } from './ui';
@@ -13,7 +13,7 @@ export const extendedNames=['history','matrix_request','matrix','contact','invoi
 const titles:Record<string,string>={history:'Histórico fiscal e folha elegível',matrix_request:'Solicitar alteração tributária',matrix:'Configurar e confirmar matriz',contact:'Cadastro da empresa',invoice:'Preparar nota por atividade',iss:'Conferir incidência e retenção de ISS',task:'Cadastrar tarefa / obrigação',task_status:'Andamento da entrega',lead:'Registrar cadastro comercial incompleto',lead_status:'Acompanhamento comercial',charge:'Cobrar um serviço',employee:'Registro de funcionário / pró-labore',payroll:'Registrar resumo da folha',payroll_request:'Solicitar atendimento de pessoal',archive:'Arquivar documento',restore:'Restaurar documento',recorddelivery:'Registrar referência do envio',review_other:'Revisar natureza da entrada',period:'Abrir competência',accounting:'Matriz contábil e saldos iniciais',journal:'Revisar lançamento contábil',accounting_close:'Revisão contábil do serviço extra',accounting_reopen:'Reabrir revisão contábil',document_events:'Histórico do documento'};
 type Props={state:WorkspaceState;company:Company;busy:boolean;dialog:{name:string;data:Record<string,any>};onClose:()=>void;act:(a:Action)=>Promise<boolean>};
 export default function ExtendedDialog({state,company:initialCompany,busy,dialog,onClose,act}:Props){
- const n=dialog.name,[f,setF]=useState<Record<string,any>>(dialog.data),set=(key:string,value:any)=>setF(prev=>({...prev,[key]:value})),company=state.companies.find(c=>c.id===f.companyId)||initialCompany,records=state.portfolio?.find(x=>x.company.id===company.id)?.records||state.records,period=state.period||'2026-08',isAccountant=state.user.role==='accountant';
+ const n=dialog.name,[f,setF]=useState<Record<string,any>>(dialog.data),set=(key:string,value:any)=>setF(prev=>({...prev,[key]:value})),company=state.companies.find(c=>c.id===f.companyId)||initialCompany,records=state.portfolio?.find(x=>x.company.id===company.id)?.records||state.records,period=state.period||mesApuracao(),isAccountant=state.user.role==='accountant';
  const text=(key:string,label:string,options:{type?:string;hint?:string;required?:boolean;placeholder?:string}={})=><Field key={key} label={label} hint={options.hint}><Input type={options.type||'text'} required={options.required!==false} value={f[key]??''} onChange={e=>set(key,e.target.value)} placeholder={options.placeholder}/></Field>;
  const area=(key:string,label:string,hint?:string)=><Field label={label} hint={hint}><textarea required value={f[key]||''} onChange={e=>set(key,e.target.value)} maxLength={2000}/></Field>;
  const choose=(key:string,label:string,options:{value:string;label:string}[])=><Field key={key} label={label}><SelectField value={f[key]||''} label={label} onChange={v=>set(key,v)} options={options}/></Field>;

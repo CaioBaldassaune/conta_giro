@@ -1,5 +1,5 @@
 import { comRetentativa, context, fail, getState, persist, portalDe, sameOrigin, type Portal } from "@/lib/server";
-import { requireThat } from "@/lib/domain";
+import { mesAtual, requireThat } from "@/lib/domain";
 import { applyAction } from "@/lib/contagiro";
 import { accountingAction } from "@/lib/reporting";
 import { criarConvite } from "@/lib/convites";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       return change.detail;
     });
     return Response.json(
-      { state: await getState(portal, a.returnCompanyId || a.companyId, a.period), message: detail },
+      { state: await getState(portal, a.returnCompanyId || a.companyId, a.type === "invoice_create" ? mesAtual() : a.period), message: detail },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {

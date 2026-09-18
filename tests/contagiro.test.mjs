@@ -1,4 +1,6 @@
-import {test} from 'node:test';
+import {test,mock} from 'node:test';
+// Relógio fixo: as regras de competência dependem do mês corrente (18/09/2026).
+mock.timers.enable({apis:['Date'],now:new Date('2026-09-18T12:00:00Z')});
 import assert from 'node:assert/strict';
 import {applyAction,issSuggestion,effectiveAnnex,otherEntryRisk} from '../.domain-tests/contagiro.mjs';
 import {accountingAction,dominioText,dre,horizontal,trialBalance,csv} from '../.domain-tests/reporting.mjs';
@@ -19,8 +21,8 @@ test('ISS is previous-month component; a public customer requires review even wh
  let company=c(),records=rows();const change=applyAction(company,records,'accountant',matrix,undefined,actor);company=change.company;records=apply(records,change);
  const estimate=issSuggestion(company,records,activity,'2026-09');assert.equal(estimate.reference,'2026-08');assert.equal(estimate.window,'2025-08 a 2026-07');assert.ok(estimate.ready);assert.ok(estimate.rate>0&&estimate.rate<.05);assert.equal(issSuggestion(company,records,activity,'2027-01').ready,false);
  records=apply(records,applyAction(company,records,'owner',{type:'contact_save',contactType:'customer',name:'Órgão fictício',municipality:'São Paulo / SP',publicBody:true},undefined,client));const contact=records.find(r=>r.kind==='contact');
- let ch=applyAction(company,records,'owner',{type:'invoice_create',contactId:contact.id,activityId:activity.id,service:'Serviço teste',serviceDate:'2026-08-10',serviceLocation:'São Paulo / SP',amount:'100,00',due:'2026-09-10'});records=apply(records,ch);const invoice=ch.upserts.find(r=>r.kind==='invoice');assert.equal(invoice.data.issStatus,'pending_review');assert.throws(()=>applyAction(company,records,'owner',{type:'invoice_simulate',id:invoice.id}),/revisão/);assert.throws(()=>applyAction(company,records,'owner',{type:'iss_review',id:invoice.id}),/perfil/);
- records=apply(records,applyAction(company,records,'accountant',{type:'iss_review',id:invoice.id,retained:true,percent:'2',basis:'Hipótese fictícia conferida para retenção'},undefined,actor));records=apply(records,applyAction(company,records,'owner',{type:'invoice_simulate',id:invoice.id}));assert.equal(records.find(r=>r.id===invoice.id).data.issAmount,200);
+ let ch=applyAction(company,records,'owner',{type:'invoice_create',contactId:contact.id,activityId:activity.id,service:'Serviço teste',serviceDate:'2026-09-10',serviceLocation:'São Paulo / SP',amount:'100,00',due:'2026-09-30'});records=apply(records,ch);const invoice=ch.upserts.find(r=>r.kind==='invoice');assert.equal(invoice.period,'2026-09');assert.ok(ch.upserts.some(r=>r.kind==='period'&&r.period==='2026-09'));assert.equal(invoice.data.issStatus,'pending_review');assert.throws(()=>applyAction(company,records,'owner',{type:'invoice_simulate',id:invoice.id}),/revisão/);assert.throws(()=>applyAction(company,records,'owner',{type:'iss_review',id:invoice.id}),/perfil/);
+ records=apply(records,applyAction(company,records,'accountant',{type:'iss_review',id:invoice.id,retained:true,percent:'2',basis:'Hipótese fictícia conferida para retenção'},undefined,actor));records=apply(records,applyAction(company,records,'owner',{type:'invoice_simulate',id:invoice.id,period:'2026-09'}));assert.equal(records.find(r=>r.id===invoice.id).data.issAmount,200);
 });
 test('factor R needs a full validated history, with threshold inclusive at 28%',()=>{const r=rows(),a={...activity,annex:'factor_r'};assert.equal(effectiveAnnex(a,r,period).ready,false);r.filter(x=>x.kind==='history').forEach(x=>{x.data.payroll=x.data.revenue*.28;x.data.payrollValidated=true;});assert.equal(effectiveAnnex(a,r,period).annex,'III');r.find(x=>x.kind==='history').data.payroll-=100;assert.equal(effectiveAnnex(a,r,period).annex,'V');});
 test('other entries create a per-company review and notification without tax or DRE inclusion',()=>{
@@ -49,3 +51,16 @@ test('accounting export requires matching reduced accounts, balanced openings, v
  r.push({id:'extra',kind:'request',period,data:{title:'Fechamento contábil',type:'Fechamento contábil / balanço',acceptedAt:'2026-09-08'}});r=apply(r,accountAction({type:'accounting_close',confirm:true,note:'Conferido',requestId:'extra'}));const output=dominioText(company,r,period);assert.ok(output.startsWith('|0000|00000000000000|\r\n'));assert.ok(output.includes('|6100|10/08/2026|1|2|100,25||Serviço teste|||'));assert.throws(()=>applyAction(company,r,'owner',{type:'classify',ids:['tenant-A:tx8'],category:'loan'}),/Reabra a revisão contábil/);
 });
 test('old scalar matrix endpoint is disabled and cross-company record IDs never resolve',()=>{assert.throws(()=>applyAction(c(),rows(),'accountant',{type:'tax_update'}),/matriz por atividades/);assert.throws(()=>applyAction(c(),rows(),'owner',{type:'document_archive',id:'other-tenant-doc',reason:'Excluir'}),/não encontrado/);assert.equal(allowed('finance','accounting_reopen'),false);assert.equal(closeGates(c(),rows())[0].done,false);});
+
+test('nota nova vai para o mês corrente; nota de mês anterior não é mais emitida; apuração exige mês encerrado',()=>{
+ let company=c(),records=rows();const change=applyAction(company,records,'accountant',matrix,undefined,actor);company=change.company;records=apply(records,change);
+ records=apply(records,applyAction(company,records,'owner',{type:'contact_save',contactType:'customer',name:'Tomador fictício',municipality:'São Paulo / SP'},undefined,client));const contact=records.find(r=>r.kind==='contact');
+ const nota={type:'invoice_create',period:'2026-08',contactId:contact.id,activityId:activity.id,service:'Serviço teste',serviceLocation:'São Paulo / SP',amount:'100,00',due:'2026-09-30'};
+ assert.throws(()=>applyAction(company,records,'owner',{...nota,serviceDate:'2026-08-10'}),/mês atual/);
+ assert.throws(()=>applyAction(company,records,'owner',{...nota,serviceDate:'2026-09-25'}),/futura/);
+ const antiga={id:'nota-agosto',kind:'invoice',period:'2026-08',data:{customer:'X',amount:100,status:'draft',issStatus:'not_indicated'}};
+ assert.throws(()=>applyAction(company,[...records,antiga],'owner',{type:'invoice_simulate',id:antiga.id}),/competência atual/);
+ assert.throws(()=>applyAction(company,records,'accountant',{type:'period_open',period:'2026-10'},undefined,actor),/futura/);
+ records=apply(records,applyAction(company,records,'accountant',{type:'period_open',period:'2026-09'},undefined,actor));
+ assert.throws(()=>applyAction(company,records,'owner',{type:'confirm_no_movement',period:'2026-09',value:true}),/ainda não terminou/);
+});

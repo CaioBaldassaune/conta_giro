@@ -1,4 +1,4 @@
-import { requireThat, PERIOD, type Company, type Entry } from "./domain";
+import { requireThat, mesApuracao, mesAtual, type Company, type Entry } from "./domain";
 import { demoCompany, demoRecords } from "./seed";
 import { erroDoBanco, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";
 import type { ClienteSupabase } from "./supabase/servidor";
@@ -29,13 +29,14 @@ export async function criarEmpresa(sb: ClienteSupabase, usuarioId: string, escri
   const base: Company = demoCompany(empresa.id, razaoSocial);
   base.data.tax.municipality = municipio;
   const agora = new Date().toISOString();
+  const apuracao = mesApuracao(), corrente = mesAtual();
   const cadastroInicial: Entry = {
-    id: crypto.randomUUID(), kind: "tax_version", period: PERIOD,
-    data: { before: null, after: { ...base.data.tax, version: 1, effectiveFrom: PERIOD, activities: [] }, requestId: null, confirmedBy: null, confirmedAt: agora },
+    id: crypto.randomUUID(), kind: "tax_version", period: apuracao,
+    data: { before: null, after: { ...base.data.tax, version: 1, effectiveFrom: apuracao, activities: [] }, requestId: null, confirmedBy: null, confirmedAt: agora },
   };
   const registros = demonstracao !== undefined
     ? demoRecords(empresa.id, demonstracao)
-    : [{ id: crypto.randomUUID(), kind: "period" as const, period: PERIOD, data: { status: "open", bankConfirmed: false, revenueConfirmed: false, lastBatch: null } }];
+    : [apuracao, corrente].map((period) => ({ id: crypto.randomUUID(), kind: "period" as const, period, data: { status: "open", bankConfirmed: false, revenueConfirmed: false, lastBatch: null } }));
 
   const vazia: EmpresaCarregada = { company: { ...base, version: 0 }, records: [], escritorioId, atividades: new Map() };
   await gravarAlteracoes(sb, vazia, usuarioId, {

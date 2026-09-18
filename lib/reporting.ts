@@ -1,4 +1,4 @@
-import { type Company, type Entry, type Action, type Change, type Role, categoryLabels, dateLabel, expenseCategories, getPeriod, inPeriod, requireThat, textField, parseMoney, validDate } from './domain';
+import { type Company, type Entry, type Action, type Change, type Role, categoryLabels, dateLabel, expenseCategories, exigirMesEncerrado, getPeriod, inPeriod, requireThat, textField, parseMoney, validDate } from './domain';
 import { monthShift, validPeriod } from './contagiro';
 export const dreLines=[['revenue','Receitas de serviços'],['other','Outras receitas operacionais conferidas'],['deductions','(-) Tributos pagos'],['net','Receita líquida gerencial'],['cost','(-) Custos dos serviços'],['people','(-) Pessoal'],['operating','(-) Despesas operacionais'],['operatingResult','Resultado operacional'],['financial','Resultado financeiro'],['result','Resultado gerencial do período']] as const;
 export function dre(records:Entry[],period:string){
@@ -27,7 +27,7 @@ export function dominioText(company:Company,records:Entry[],period:string){const
 export function csv(rows:unknown[][]){return '\uFEFF'+rows.map(row=>row.map(cell=>{let s=String(cell??'');if(/^[=+@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}).join(';')).join('\r\n');}
 export function accountingAction(company:Company,records:Entry[],role:Role,a:Action,now:string,actor:{id:string;email:string}):Change|null{
  if(!['accounting_save','journal_generate','journal_save','journal_validate','accounting_close','accounting_reopen'].includes(a.type))return null;
- requireThat(role==='accountant','Somente o contador configura e fecha a contabilidade.',403);const period=a.period;requireThat(validPeriod(period)&&getPeriod(records,period),'Competência indisponível.');const upserts:Entry[]=[];let detail='';const add=(kind:Entry['kind'],data:Record<string,any>,id=crypto.randomUUID())=>upserts.push({id,kind,period,data});
+ requireThat(role==='accountant','Somente o contador configura e fecha a contabilidade.',403);const period=a.period;requireThat(validPeriod(period)&&getPeriod(records,period),'Competência indisponível.');if(a.type==='accounting_close')exigirMesEncerrado(period,new Date(now));const upserts:Entry[]=[];let detail='';const add=(kind:Entry['kind'],data:Record<string,any>,id=crypto.randomUUID())=>upserts.push({id,kind,period,data});
  const config=accountingConfig(records),close=inPeriod(records,'accounting',period).find(r=>r.data.type==='close');
  if(a.type!=='accounting_reopen')requireThat(close?.data.status!=='reviewed','Reabra a revisão contábil antes de alterar o lote.');
  if(a.type==='accounting_save'){

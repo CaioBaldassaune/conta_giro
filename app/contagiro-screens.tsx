@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs,TabsList,TabsTrigger,TabsContent } from '@/components/ui/tabs';
 import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from '@/components/ui/table';
-import { categoryLabels,closeGates,dateLabel,getPeriod,inPeriod,money,monthLabel,taxEstimate,totals,type Entry } from '@/lib/domain';
+import { categoryLabels,closeGates,dateLabel,getPeriod,inPeriod,mesApuracao,money,monthLabel,taxEstimate,totals,type Entry } from '@/lib/domain';
 import { amountText,effectiveAnnex,monthShift,otherEntryRisk } from '@/lib/contagiro';
 import { accountingConfig,dre,dreLines,dreNotes,horizontal,trialBalance } from '@/lib/reporting';
 import { docCategories,Empty,Info,Metric,SelectField,Status,type ScreenProps } from './ui';
 export function GiroGauge({completed,total}:{completed:number;total:number}){const ratio=total>0?completed/total:0,angle=-90+180*Math.min(1,ratio);return <section className="giro-panel"><div className="giro-graphic"><svg viewBox="0 0 200 122" role="img" aria-label={`${completed} de ${total} etapas concluídas`}><defs><linearGradient id="giroArc" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#2E9BE0"/><stop offset="55%" stopColor="#21C0B0"/><stop offset="100%" stopColor="#2FBF71"/></linearGradient></defs><path d="M22 103 A78 78 0 0 1 178 103" fill="none" stroke="#E5EDF2" strokeWidth="13" strokeLinecap="round"/><path d="M22 103 A78 78 0 0 1 178 103" fill="none" stroke="url(#giroArc)" strokeWidth="13" strokeLinecap="round" pathLength="100" strokeDasharray={`${ratio*100} 100`}/><g transform={`rotate(${angle} 100 103)`}><path d="M100 103 L100 43" stroke="#243B4A" strokeWidth="5" strokeLinecap="round"/><circle cx="100" cy="103" r="8" fill="#243B4A"/></g></svg></div><div><span className="eyebrow">SEU MÊS NO GIRO CERTO</span><h2>{completed===total&&total>0?'Etapas conferidas. Pronto para avançar.':`${Math.max(0,total-completed)} etapa(s) para organizar o fechamento.`}</h2><p>{completed} de {total} etapas concluídas. O medidor acompanha a preparação do mês.</p></div><span className="giro-number">{Math.round(ratio*100)}<small>%</small></span></section>;}
 const today=()=>new Date().toISOString().slice(0,10);
 export default function ExtendedScreens(p:ScreenProps){
- const {state,records,company,page,isAccountant,busy,show,act,refresh,navigate,exportFile}=p,period=state.period||'2026-08';
+ const {state,records,company,page,isAccountant,busy,show,act,refresh,navigate,exportFile}=p,period=state.period||mesApuracao();
  const [query,setQuery]=useState(''),[filter,setFilter]=useState('all'),[month,setMonth]=useState(monthShift(period,1)),[day,setDay]=useState<string|null>(null),[folder,setFolder]=useState('all'),[scope,setScope]=useState('monthly');
  const portfolio=state.portfolio||[{company,records}],all=portfolio.filter(x=>x.company.data.active).flatMap(x=>x.records.map(r=>({...r,companyId:x.company.id,companyName:x.company.name}))),tasks=all.filter(r=>r.kind==='task'),requests=all.filter(r=>r.kind==='request'),charges=all.filter(r=>r.kind==='charge'),leads=all.filter(r=>r.kind==='lead'),subscriptions=all.filter(r=>r.kind==='subscription');
  const matches=(text:string)=>text.toLowerCase().includes(query.toLowerCase());

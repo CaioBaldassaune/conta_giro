@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { allowed,closeGates,getPeriod,inPeriod,parseMoney,reduceAction,taxEstimate,totals,validDate,visibleKinds } from "../.domain-tests/domain.mjs";
+import test, { mock } from "node:test";
+import { allowed,closeGates,exigirMesDeEmissao,exigirMesEncerrado,getPeriod,inPeriod,mesApuracao,mesAtual,parseMoney,reduceAction,taxEstimate,totals,validDate,visibleKinds } from "../.domain-tests/domain.mjs";
+// Relógio fixo: as regras de competência dependem do mês corrente (18/09/2026).
+mock.timers.enable({apis:['Date'],now:new Date('2026-09-18T12:00:00Z')});
 import { parseStatement,suggestedCategory } from "../.domain-tests/importer.mjs";
 import { demoCompany,demoRecords } from "../.domain-tests/seed.mjs";
 const company=()=>{const c=demoCompany("tenant-A","Aurora");c.data.tax.confirmedAt="2026-08-01T00:00:00Z";return c;};const records=()=>demoRecords("tenant-A");
@@ -16,3 +18,11 @@ test("local tax estimate uses competence history under cash regime and suspends 
 test("extra request acceptance creates one internal charge; payment report is not confirmation",()=>{let rows=records();rows=apply(rows,reduceAction(company(),rows,"accountant",{type:"quote_request",id:"tenant-A:req1",amount:"250,00",scope:"Alterar endereço"}));rows=apply(rows,reduceAction(company(),rows,"owner",{type:"accept_quote",id:"tenant-A:req1"}));const charge=rows.find(r=>r.kind==="charge"&&r.data.source==="extra");assert.equal(charge.data.amount,25000);assert.throws(()=>reduceAction(company(),rows,"owner",{type:"accept_quote",id:"tenant-A:req1"}),/disponível/);rows=apply(rows,reduceAction(company(),rows,"owner",{type:"report_charge",id:charge.id}));assert.equal(rows.find(r=>r.id===charge.id).data.status,"paid_reported");});
 test("CSV preserves quoted descriptions, BRL and ambiguous duplicates for review",()=>{const result=parseStatement('\ufeffData;Descrição;Valor\n01/08/2026;"Software; assinatura";-1.234,56\n01/08/2026;"Software; assinatura";-1.234,56\n',"a.csv");assert.equal(result.length,2);assert.equal(result[0].amount,-123456);assert.equal(result[0].description,"Software; assinatura");assert.equal(result[0].possibleDuplicate,true);assert.throws(()=>parseStatement("Data;Descrição;Valor\n31/02/2026;Erro;100,00","a.csv"),/Data inválida/);});
 test("OFX SGML and XML parse cents, dates and bank identifiers",()=>{const sgml='<OFX><STMTTRN><DTPOSTED>20260805120000[-3:BRT]\n<TRNAMT>-279.00\n<FITID>abc\n<MEMO>VIVO EMPRESAS\n</STMTTRN></OFX>';assert.deepEqual(parseStatement(sgml,"b.ofx")[0],{date:"2026-08-05",description:"VIVO EMPRESAS",amount:-27900,fitId:"abc",line:1,possibleDuplicate:false});const xml='<OFX><STMTTRN><DTPOSTED>20260806</DTPOSTED><TRNAMT>100.01</TRNAMT><FITID>x2</FITID><NAME>CLIENTE</NAME></STMTTRN></OFX>';assert.equal(parseStatement(xml,"b.ofx")[0].amount,10001);});
+
+test("competências: nota no mês corrente (Brasília) e apuração só de mês encerrado",()=>{
+  assert.equal(mesAtual(new Date("2026-10-01T01:00:00Z")),"2026-09"); // 22h de 30/09 em Brasília
+  assert.equal(mesApuracao(new Date("2027-01-05T12:00:00Z")),"2026-12");
+  assert.equal(mesAtual(),"2026-09");assert.equal(mesApuracao(),"2026-08");
+  exigirMesDeEmissao("2026-09");assert.throws(()=>exigirMesDeEmissao("2026-08"),/competência atual \(setembro de 2026\)/);
+  exigirMesEncerrado("2026-08");assert.throws(()=>exigirMesEncerrado("2026-09"),/ainda não terminou/);
+});

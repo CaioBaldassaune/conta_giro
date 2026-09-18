@@ -1,5 +1,5 @@
 import { criarClienteServidor, type ClienteSupabase } from "@/lib/supabase/servidor";
-import { DomainError, requireThat, visibleKinds, type Audit, type Change, type Entry, type Role, type WorkspaceState } from "./domain";
+import { DomainError, mesApuracao, mesAtual, requireThat, visibleKinds, type Audit, type Change, type Entry, type Role, type WorkspaceState } from "./domain";
 import { carregarEmpresas, ConflitoDeVersao, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";
 import { PAPEIS } from "./traducao";
 
@@ -116,7 +116,7 @@ export class SemAcesso extends DomainError {
  * Estado da tela. Por padrão carrega só a empresa selecionada (escala para 100+
  * empresas); `carteira: true` carrega todas, apenas para as telas que precisam.
  */
-export async function getState(portal: Portal, companyId?: string, period = "2026-08", opcoes: { carteira?: boolean } = {}): Promise<WorkspaceState> {
+export async function getState(portal: Portal, companyId?: string, period = mesApuracao(), opcoes: { carteira?: boolean } = {}): Promise<WorkspaceState> {
   const { sb, u } = await identity();
   const a = await acessos(sb, u.id);
 
@@ -156,7 +156,8 @@ export async function getState(portal: Portal, companyId?: string, period = "202
   }
 
   const available = atual.records.filter((r) => r.kind === "period").map((r) => r.period);
-  const selectedPeriod = available.includes(period) ? period : available.sort().at(-1) || "2026-08";
+  const padrao = available.includes(mesApuracao()) ? mesApuracao() : available.filter((m) => m <= mesAtual()).sort().at(-1);
+  const selectedPeriod = available.includes(period) ? period : padrao || available.sort().at(-1) || mesApuracao();
 
   return {
     period: selectedPeriod,

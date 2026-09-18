@@ -3,7 +3,7 @@
 // arquiva XML (e DANFSe) em Documentos → marca a nota como autorizada.
 
 import "server-only";
-import { DomainError, requireThat, type Entry } from "../domain";
+import { DomainError, exigirMesDeEmissao, hojeBrasilia, requireThat, type Entry } from "../domain";
 import { exigirValido, lerCertificado, type Certificado } from "../certificado";
 import { caminhoDocumento, enviarArquivo, sha256 } from "../arquivos";
 import { comRetentativa, context, persist, type Contexto } from "../server";
@@ -33,6 +33,8 @@ export async function emitirNota(admin: ClienteAdmin, empresaId: string, notaId:
   requireThat(nota, "Nota não encontrada.", 404);
   const d = nota.data;
   requireThat(d.status === "draft", "Somente rascunhos podem ser emitidos.");
+  exigirMesDeEmissao(nota.period);
+  requireThat(!d.serviceDate || d.serviceDate <= hojeBrasilia(), "A data da prestação não pode ser futura (regra E0015).");
   requireThat(d.issStatus !== "pending_review", "Aguarde a conferência de ISS pelo contador antes de emitir.");
   requireThat(!d.taxVersion || d.taxVersion === ctx.company.data.tax.version, "A matriz tributária mudou. Cancele o rascunho e prepare outro.");
   const atividade = d.activitySnapshot ?? ctx.company.data.tax.activities?.find((a) => a.id === d.activityId);

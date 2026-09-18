@@ -9,6 +9,14 @@ export type Activity={id:string;cnae:string;name:string;annex:"III"|"IV"|"V"|"fa
 export type Audit = { id: string; actor_email: string; action: string; detail: string; created_at: string };
 export type WorkspaceState = { period?:string; portfolio?:{company:Company;records:Entry[]}[]; companies: Company[]; records: Entry[]; audit: Audit[]; selectedCompany: string; user: { name: string; email: string; role: Role }; };
 export const PERIOD = "2026-08";
+// Calendário do escritório (horário de Brasília, UTC-3): notas fiscais só no mês corrente;
+// apuração, envio e revisão só de mês já encerrado (em regra, o mês anterior).
+export function hojeBrasilia(agora=new Date()) { return new Date(agora.getTime()-3*3600e3).toISOString().slice(0,10); }
+export function mesAtual(agora=new Date()) { return hojeBrasilia(agora).slice(0,7); }
+export function mesAnterior(mes:string) { const [a,m]=mes.split("-").map(Number); return m===1?`${a-1}-12`:`${a}-${String(m-1).padStart(2,"0")}`; }
+export function mesApuracao(agora=new Date()) { return mesAnterior(mesAtual(agora)); }
+export function exigirMesDeEmissao(period:string,agora=new Date()) { const atual=mesAtual(agora); requireThat(period===atual,`Notas fiscais só são emitidas na competência atual (${monthLabel(atual)}). Esta nota é de ${monthLabel(period)}: cancele o rascunho e prepare outro.`,409); }
+export function exigirMesEncerrado(period:string,agora=new Date()) { const atual=mesAtual(agora); requireThat(period<atual,`${monthLabel(period)} ainda não terminou: a apuração só é feita com o mês encerrado. Apure ${monthLabel(mesAnterior(atual))}.`,409); }
 export const categoryLabels: Record<string,string> = {
   revenue: "Receita de serviços", other_revenue:"Outras entradas / receitas a esclarecer", rent: "Aluguel e condomínio", software: "Software e assinaturas", telecom: "Internet e telefonia", taxes: "Tributos", people: "Pessoal", bank: "Tarifas bancárias", other_expense: "Outras despesas", service_cost:"Custos dos serviços", transfer: "Transferência entre contas", loan: "Empréstimo / aporte", adjustment: "Estorno / ajuste",
 };
@@ -85,7 +93,7 @@ export type Action = { type:string; [key:string]:any };
 export type Change = { upserts:Entry[]; company?:Company; event:string; detail:string; };
 export function reduceAction(company:Company,records:Entry[],role:Role,a:Action,now=new Date().toISOString()):Change {
   requireThat(allowed(role,a.type),"Seu perfil não permite esta operação.",403);
-  const period=a.period||PERIOD; requireThat(/^\d{4}-\d{2}$/.test(period),"Competência inválida.");
+  const period=a.period||mesApuracao(new Date(now)); requireThat(/^\d{4}-\d{2}$/.test(period),"Competência inválida.");
   const p=getPeriod(records,period); requireThat(p,"Competência não disponível.");
   const upserts:Entry[]=[];let changedCompany:Company|undefined;
   const entry=(kind:Kind,data:Record<string,any>,id=crypto.randomUUID()):Entry=>({id,kind,period,data});
