@@ -2,6 +2,7 @@
 //   POST {base}/nfse  { dpsXmlGZipB64 }  → 201 { chaveAcesso, idDps, nfseXmlGZipB64, alertas }
 //   GET  {base}/nfse/{chaveAcesso}       → NFS-e autorizada
 //   DANFSe (PDF): {adn}/danfse/{chaveAcesso}
+//   Convênio:     {adn}/parametrizacao/{codigoIbge}/convenio (o município aceita o Emissor Nacional?)
 // Toda chamada usa o certificado A1 da empresa emitente (mTLS), que precisa ser
 // ICP-Brasil e trazer o CNPJ (regras E1200–E1209 da recepção).
 
@@ -78,6 +79,27 @@ export async function emitirDps(ambiente: AmbienteNfse, certificado: Certificado
   }
   const erros = mensagens(json.erros ?? json.Erros ?? json.mensagens);
   return { ok: false, status: res.status, erros: erros.length ? erros : [{ codigo: `HTTP ${res.status}`, descricao: res.corpo.toString("utf8").slice(0, 500) || "Resposta sem conteúdo." }], bruto: json };
+}
+
+export type Convenio = { emissorNacional: boolean; mensagem: string };
+
+/**
+ * Consulta se o município aceita a emissão pelo Emissor Nacional (Sefin). Municípios que só
+ * compartilham dados com o ambiente nacional (ex.: Palmas/TO, com WebISS próprio) recusam a DPS
+ * com E0037. Devolve null se a consulta falhar: nesse caso a emissão segue e a Sefin decide.
+ */
+export async function consultarConvenio(ambiente: AmbienteNfse, certificado: Certificado, codigoIbge: string): Promise<Convenio | null> {
+  try {
+    const res = await requisicao(`${BASES[ambiente].adn}/parametrizacao/${codigoIbge}/convenio`, certificado, { metodo: "GET" });
+    const json = JSON.parse(res.corpo.toString("utf8")) as { parametrosConvenio?: { aderenteEmissorNacional?: number } | null; mensagem?: string };
+    if (res.status !== 200 && res.status !== 404) return null;
+    const c = json.parametrosConvenio;
+    return c
+      ? { emissorNacional: c.aderenteEmissorNacional === 1, mensagem: "O convênio cobre só o compartilhamento de dados com o ambiente nacional." }
+      : { emissorNacional: false, mensagem: String(json.mensagem ?? "Convênio não ativo no Sistema Nacional").trim().replace(/.?$/, ".") };
+  } catch {
+    return null;
+  }
 }
 
 /** PDF da DANFSe. Melhor esforço: se falhar, a nota continua válida pelo XML. */

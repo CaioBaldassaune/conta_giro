@@ -10,7 +10,7 @@ import { comRetentativa, context, persist, type Contexto } from "../server";
 import type { ClienteAdmin } from "../supabase/admin";
 import { assinarDps, assinaturaValida } from "./assinatura";
 import { ErroDps, montarDps, type AmbienteNfse } from "./dps";
-import { baixarDanfse, emitirDps } from "./sefin";
+import { baixarDanfse, consultarConvenio, emitirDps } from "./sefin";
 
 export async function certificadoDaEmpresa(admin: ClienteAdmin, empresaId: string): Promise<Certificado> {
   const { data: registro } = await admin.from("certificados_digitais").select("*").eq("empresa_id", empresaId).eq("situacao", "ativo").maybeSingle();
@@ -45,6 +45,13 @@ export async function emitirNota(admin: ClienteAdmin, empresaId: string, notaId:
   requireThat(config?.ativa, "Configure e ative a emissão de NFS-e desta empresa em Integrações → NFS-e.", 409);
   const certificado = await certificadoDaEmpresa(admin, empresaId);
   requireThat(certificado.cnpj === ctx.company.data.cnpj, "O certificado enviado não é do CNPJ desta empresa.", 409);
+
+  // Antes de reservar número: o município precisa aceitar o Emissor Nacional neste ambiente.
+  const convenio = await consultarConvenio(config.ambiente, certificado, config.codigo_ibge_emissao);
+  requireThat(!convenio || convenio.emissorNacional,
+    `O município ${ctx.company.data.tax.municipality || config.codigo_ibge_emissao} não aceita emissão pelo Emissor Nacional ` +
+    `(${config.ambiente === "producao" ? "produção" : "produção restrita"}). ${convenio?.mensagem ?? ""} ` +
+    "A nota precisa ser emitida no sistema da prefeitura; nenhum número de DPS foi usado.", 409);
 
   // Reserva atômica do número (a função confere o papel do usuário).
   const { data: reserva, error: erroReserva } = await ctx.sb.rpc("reservar_numero_dps", { p_empresa: empresaId });
