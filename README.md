@@ -17,11 +17,27 @@ Portal de validação de contabilidade self-service para prestadores de serviço
 - Competências adicionais; declaração de ausência de movimentação. DRE gerencial por caixa, análise horizontal, variação com base zero sinalizada, notas determinísticas e exportação CSV arquivada. Nota emitida não é somada novamente ao recebimento. Outras entradas pendentes ficam fora do resultado.
 - Matriz contábil opcional: códigos reduzidos, saldos iniciais equilibrados e mapeamento de categorias. Lançamentos preparatórios do extrato, ajustes manuais, revisão individual, balancete e fechamento condicionado ao aceite do serviço extra. Exportador TXT no leiaute Domínio Separador, registros 0000/6000/6100. Separadores e casas decimais conferidos também no arquivo de exemplo do fornecedor. Códigos do destino e importação ainda precisam de homologação no Domínio. O balanço oficial e sua assinatura são concluídos na ferramenta contábil.
 
-## Persistência e autorização
+## Arquitetura (setembro de 2026)
 
-D1 lógico DB e R2 DOCUMENTS. Não houve mudança de esquema nesta atualização: novos registros tipados usam a estrutura existente; migração aplicada preservada. Consultas preparadas, controle de versão e lote atômico condicionam as alterações. Arquivos de exportação também são preservados como documentos.
+O ContaGiro é o ERP do cliente e o portal do escritório; o Domínio continua sendo o centro da apuração e da escrituração.
 
-O primeiro acesso autenticado de cada identidade cria um ambiente demonstrativo independente; não concede acesso a outra carteira. Perfis e dados são filtrados no servidor. A prévia visual de cliente não substitui autorização real. A audiência é gerida pelo proprietário no Sites; não presumir que continua restrita somente ao proprietário. Onboarding real, convites operacionais e atribuição de clientes ao contador continuam pendentes.
+- **Aplicação:** Next.js 16 (App Router) hospedado na Vercel.
+- **Banco, login e arquivos:** Supabase (Postgres com RLS, Auth e Storage, bucket privado `documentos`).
+- **Portais:** `/contador` (equipe do escritório; o primeiro acesso cadastra o escritório) e `/cliente` (usuários da empresa; acesso somente por convite com token de uso único).
+- **Regras de negócio:** `lib/domain.ts`, `lib/contagiro.ts` e `lib/reporting.ts`, inalteradas.
+- **Tradução para o banco:** `lib/traducao.ts` converte os registros das regras para as tabelas normalizadas em português e de volta; `lib/repositorio.ts` carrega e grava.
+- **Gravação:** cada ação é gravada de forma atômica por `public.aplicar_alteracoes` (RLS do usuário, trava otimista por empresa e auditoria). Em conflito, o servidor recarrega e reaplica a regra.
+- **Migrações:** `supabase/migrations/`.
+
+## Ambientes
+
+| Ambiente | Onde | Observação |
+| --- | --- | --- |
+| Local | `npm run dev` → http://localhost:3000 | Requer `.env.local` (ver `.env.example`). |
+| Homologação | Vercel Preview da branch `homologacao` | Protegido por login da Vercel; Supabase `contagiro-homolog`. |
+| Produção | branch `main` | Ainda não publicada para uso. |
+
+Comandos: `npm test` (regras e tradução), `npm run typecheck`, `npm run build`.
 
 ## Limitações operacionais explícitas
 
@@ -31,11 +47,9 @@ DRE por caixa não substitui DRE por competência nem balanço patrimonial. Um l
 
 ## Verificação
 
-- `npm test`: 22 testes de domínio/SQLite, incluindo isolamento de registros, matriz e solicitação, Fator R, ISS anterior, outras entradas, recorrência, preservação documental, folha, DRE, lote contábil e exportação.
-- `npx tsc --noEmit`: verificação de tipos.
-- Build pelo fluxo oficial do Sites.
-- QA de navegador não solicitado, portanto não realizado. Câmera do celular, jornadas com usuários, envio de integrações e importação no Domínio precisam de validação operacional.
-- O ensaio de API/Miniflare da versão anterior não passou por restrição de rede do ambiente. Não é contado como teste aprovado.
+- `npm test`: 21 testes das regras originais e 5 de ida e volta pelo banco (tradução).
+- RLS testado no Supabase com escritórios distintos e papéis de cliente (sócio, financeiro, emissor, anônimo).
+- Fluxos testados no navegador: cadastro do escritório, carteira, classificação, matriz, convite, aceite pelo cliente, nota simulada e documentos.
 
 ## Fontes da implementação
 
