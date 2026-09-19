@@ -4,8 +4,8 @@ import { dirname } from "node:path";
 import { spawnSync } from "node:child_process";
 
 // Transpila os módulos puros de lib/ para .domain-tests/ e roda os testes com node:test.
-const MODULOS = ["domain", "importer", "seed", "contagiro", "reporting", "traducao", "repositorio", "carteira", "certificado", "serpro-formato", "nfse/dps", "nfse/assinatura", "pgdas"];
-const LOCAIS = /(['"])\.\/(domain|contagiro|reporting|traducao|repositorio|carteira|certificado|serpro-formato|dps|assinatura|pgdas)\1/g;
+const MODULOS = ["domain", "importer", "seed", "contagiro", "reporting", "traducao", "repositorio", "carteira", "certificado", "serpro-formato", "nfse/dps", "nfse/assinatura", "nfse/abrasf", "pgdas"];
+const LOCAIS = /(['"])\.\/(domain|contagiro|reporting|traducao|repositorio|carteira|certificado|serpro-formato|dps|assinatura|abrasf|pgdas)\1/g;
 
 for (const nome of MODULOS) {
   const entrada = await readFile(`lib/${nome}.ts`, "utf8");
@@ -16,6 +16,6 @@ for (const nome of MODULOS) {
   await writeFile(destino, saida);
 }
 
-const testes = ["domain", "contagiro", "traducao", "carteira", "serpro", "nfse", "pgdas", "estilos"].map((t) => `tests/${t}.test.mjs`);
+const testes = ["domain", "contagiro", "traducao", "carteira", "serpro", "nfse", "pgdas", "webiss", "estilos"].map((t) => `tests/${t}.test.mjs`);
 const resultado = spawnSync(process.execPath, ["--test", ...testes], { stdio: "inherit" });
 process.exit(resultado.status ?? 1);

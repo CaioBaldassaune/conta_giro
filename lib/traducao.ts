@@ -207,6 +207,8 @@ export function montarEmpresa(t: TabelasEmpresa): { company: Company; records: E
   for (const r of t.contatos ?? []) records.push(entrada("contact", r.id, mes(r.criado_em), {
     name: r.nome, contactType: TIPO_CONTATO.regra(r.tipo), taxId: r.cpf_cnpj ?? "", email: r.email ?? "", phone: r.telefone ?? "",
     municipality: r.municipio, address: r.endereco ?? "", municipalRegistration: r.inscricao_municipal ?? "",
+    zip: r.cep ?? "", street: r.logradouro ?? "", streetNumber: r.numero_endereco ?? "", complement: r.complemento ?? "",
+    district: r.bairro ?? "", ibge: r.codigo_ibge ?? "", uf: r.uf ?? "",
     publicBody: r.orgao_publico, updatedAt: instante(r.atualizado_em),
   }));
 
@@ -387,6 +389,8 @@ function paraLinhas(e: Entry, ctx: ContextoTraducao, novo: boolean): LinhaTabela
         id, nome: d.name, tipo: TIPO_CONTATO.banco(d.contactType), cpf_cnpj: d.taxId || null, email: d.email || null,
         telefone: d.phone || null, municipio: d.municipality, endereco: d.address || null,
         inscricao_municipal: d.municipalRegistration || null, orgao_publico: !!d.publicBody,
+        cep: d.zip || null, logradouro: d.street || null, numero_endereco: d.streetNumber || null, complemento: d.complement || null,
+        bairro: d.district || null, codigo_ibge: d.ibge || null, uf: d.uf || null,
       })];
 
     case "invoice": {

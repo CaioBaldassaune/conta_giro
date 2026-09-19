@@ -16,6 +16,14 @@ export const ALGORITMOS = {
 const corpoDoCertificado = (pem: string) => pem.replace(/-----(BEGIN|END) CERTIFICATE-----/g, "").replace(/\s+/g, "");
 
 export function assinarDps(xml: string, chavePem: string, certificadoPem: string): string {
+  return assinarElemento(xml, "infDPS", chavePem, certificadoPem);
+}
+
+/**
+ * Assina o elemento indicado (pelo nome local), com a assinatura inserida logo depois dele.
+ * Usado também no RPS do WebISS (ABRASF 2.02: "InfDeclaracaoPrestacaoServico").
+ */
+export function assinarElemento(xml: string, elemento: string, chavePem: string, certificadoPem: string): string {
   const assinatura = new SignedXml({
     privateKey: chavePem,
     publicCert: certificadoPem,
@@ -24,11 +32,11 @@ export function assinarDps(xml: string, chavePem: string, certificadoPem: string
     getKeyInfoContent: () => `<X509Data><X509Certificate>${corpoDoCertificado(certificadoPem)}</X509Certificate></X509Data>`,
   });
   assinatura.addReference({
-    xpath: "//*[local-name(.)='infDPS']",
+    xpath: `//*[local-name(.)='${elemento}']`,
     transforms: [ENVELOPED, C14N],
     digestAlgorithm: ALGORITMOS.digest,
   });
-  assinatura.computeSignature(xml, { location: { reference: "//*[local-name(.)='infDPS']", action: "after" } });
+  assinatura.computeSignature(xml, { location: { reference: `//*[local-name(.)='${elemento}']`, action: "after" } });
   return assinatura.getSignedXml();
 }
 

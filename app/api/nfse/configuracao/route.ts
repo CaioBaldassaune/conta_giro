@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       sb.from("empresas").select("id, razao_social, cnpj, municipio").eq("id", empresaId).maybeSingle(),
       sb.from("configuracoes_nfse").select("*").eq("empresa_id", empresaId).maybeSingle(),
       sb.from("certificados_digitais").select("cnpj, titular, valido_ate, criado_em").eq("empresa_id", empresaId).eq("situacao", "ativo").maybeSingle(),
-      sb.from("notas_fiscais").select("numero, chave_acesso, ambiente, emitida_em, tomador_nome, valor_servicos").eq("empresa_id", empresaId).not("chave_acesso", "is", null).order("emitida_em", { ascending: false }).limit(10),
+      sb.from("notas_fiscais").select("numero, chave_acesso, codigo_verificacao, ambiente, emitida_em, tomador_nome, valor_servicos").eq("empresa_id", empresaId).eq("situacao", "autorizada").order("emitida_em", { ascending: false }).limit(10),
     ]);
     requireThat(empresa, "Empresa não encontrada.", 404);
     return Response.json({ empresa, configuracao: config, certificado, emitidas: emitidas ?? [], chaveServidorConfigurada: !!process.env.SUPABASE_SECRET_KEY }, { headers: { "Cache-Control": "no-store" } });
@@ -40,11 +40,17 @@ export async function POST(request: Request) {
     requireThat(d.opSimples !== "3" || ["1", "2", "3"].includes(regime!), "Informe o regime de apuração do Simples Nacional.");
     const percentual = d.percentualTributosSN === "" || d.percentualTributosSN == null ? null : Number(String(d.percentualTributosSN).replace(",", "."));
     requireThat(d.opSimples !== "3" || (percentual != null && percentual >= 0 && percentual < 100), "Para ME/EPP informe o percentual aproximado dos tributos do Simples Nacional (regra E0712).");
+    const provedor = d.provedor === "webiss" ? "webiss" : "nacional";
+    const webissMunicipio = String(d.webissMunicipio ?? "").trim().toLowerCase();
+    requireThat(provedor === "nacional" || /^[a-z]{3,40}$/.test(webissMunicipio), "Informe o município no WebISS (o subdomínio, ex.: palmasto).");
+    requireThat(provedor === "nacional" || String(d.inscricaoMunicipal ?? "").trim(), "O WebISS exige a inscrição municipal do prestador.");
     requireThat(d.ambiente !== "producao" || d.confirmarProducao === true, "Para emitir em produção confirme que os testes na produção restrita foram concluídos.");
 
     const { error } = await sb.from("configuracoes_nfse").upsert({
       empresa_id: d.empresaId,
       ambiente: d.ambiente,
+      provedor,
+      webiss_municipio: provedor === "webiss" ? webissMunicipio : null,
       serie_dps: String(d.serie),
       proximo_numero_dps: proximo,
       codigo_ibge_emissao: String(d.codigoIbge),
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
       atualizado_em: new Date().toISOString(),
     });
     if (error) throw erroDoBanco(error);
-    await sb.from("registros_auditoria").insert({ empresa_id: d.empresaId, ator_id: u.id, ator_email: u.email, acao: "nfse_configurada", detalhe: `Ambiente ${d.ambiente}, série ${d.serie}, próximo nº ${proximo}, ${d.ativa ? "ativa" : "inativa"}.` });
+    await sb.from("registros_auditoria").insert({ empresa_id: d.empresaId, ator_id: u.id, ator_email: u.email, acao: "nfse_configurada", detalhe: `Emissor ${provedor === "webiss" ? `WebISS (${webissMunicipio})` : "Nacional"}, ambiente ${d.ambiente}, série ${d.serie}, próximo nº ${proximo}, ${d.ativa ? "ativa" : "inativa"}.` });
     return Response.json({ message: "Configuração da NFS-e salva." }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return fail(e);

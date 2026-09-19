@@ -7,18 +7,22 @@ import { Input } from "@/components/ui/input";
 
 type Config = {
   ambiente: "producao_restrita" | "producao"; serie_dps: string; proximo_numero_dps: number; codigo_ibge_emissao: string;
+  provedor: "nacional" | "webiss"; webiss_municipio: string | null;
   inscricao_municipal: string | null; op_simples_nacional: string; regime_apuracao_sn: string | null; percentual_tributos_sn: number | null; ativa: boolean;
 };
 type Dados = {
   empresa: { id: string; razao_social: string; cnpj: string | null; municipio: string | null };
   configuracao: Config | null;
   certificado: { cnpj: string; titular: string; valido_ate: string } | null;
-  emitidas: { numero: string; chave_acesso: string; ambiente: string; emitida_em: string; tomador_nome: string; valor_servicos: number }[];
+  emitidas: { numero: string; chave_acesso: string | null; codigo_verificacao: string | null; ambiente: string; emitida_em: string; tomador_nome: string; valor_servicos: number }[];
   chaveServidorConfigurada: boolean;
 };
 
 // Municípios do Padrão Nacional já usados pela carteira (preenchimento rápido do IBGE).
-const IBGE_CONHECIDOS: Record<string, string> = { "luis eduardo magalhaes": "2919553" };
+const IBGE_CONHECIDOS: Record<string, string> = { "luis eduardo magalhaes": "2919553", palmas: "1721000" };
+// Municípios que emitem pelo WebISS próprio (não aceitam o Emissor Nacional).
+const WEBISS_CONHECIDOS: Record<string, string> = { palmas: "palmasto" };
+const webissSugerido = (municipio: string | null) => WEBISS_CONHECIDOS[semAcento((municipio ?? "").split("/")[0].trim())] ?? "";
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const ibgeSugerido = (municipio: string | null) => IBGE_CONHECIDOS[semAcento((municipio ?? "").split("/")[0].trim())] ?? "";
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -43,6 +47,8 @@ export default function ConfiguracaoNfse({ empresas }: { empresas: { id: string;
     setDados(d);
     setForm({
       ambiente: c?.ambiente ?? "producao_restrita",
+      provedor: c?.provedor ?? (webissSugerido(d.empresa.municipio) ? "webiss" : "nacional"),
+      webissMunicipio: c?.webiss_municipio ?? webissSugerido(d.empresa.municipio),
       serie: c?.serie_dps ?? "1",
       proximoNumero: String(c?.proximo_numero_dps ?? 1),
       codigoIbge: c?.codigo_ibge_emissao ?? ibgeSugerido(d.empresa.municipio),
@@ -100,13 +106,14 @@ export default function ConfiguracaoNfse({ empresas }: { empresas: { id: string;
   }
 
   const c = dados?.configuracao;
+  const webiss = form.provedor === "webiss";
   return (
     <section className="integracao-cartao">
       <header>
         <PlugZap size={22} />
         <div>
-          <h2>NFS-e Nacional • Sefin Nacional</h2>
-          <p>Emissão direta no Sistema Nacional (municípios do Padrão Nacional), com o certificado A1 de cada empresa. Teste primeiro em produção restrita.</p>
+          <h2>NFS-e • Sefin Nacional ou WebISS</h2>
+          <p>Emissão com o certificado A1 de cada empresa: pelo Sistema Nacional (municípios conveniados) ou pelo WebISS do município (ex.: Palmas/TO). Teste primeiro no ambiente de testes.</p>
         </div>
         {c?.ativa ? <span className="painel-chip ok"><CheckCircle2 size={12} />Ativa • {c.ambiente === "producao" ? "produção" : "produção restrita"}</span> : <span className="painel-chip atencao">Inativa</span>}
       </header>
@@ -127,20 +134,30 @@ export default function ConfiguracaoNfse({ empresas }: { empresas: { id: string;
 
           <form className="painel-form" onSubmit={salvar}>
             <div className="painel-form-linha">
+              <label>Emissor
+                <select className="painel-select" value={String(form.provedor)} onChange={(e) => set("provedor", e.target.value)}>
+                  <option value="nacional">Sefin Nacional (Emissor Nacional)</option>
+                  <option value="webiss">WebISS do município (ABRASF 2.02)</option>
+                </select>
+              </label>
+              {webiss && <label>Município no WebISS (subdomínio)<Input value={String(form.webissMunicipio)} onChange={(e) => set("webissMunicipio", e.target.value)} placeholder="palmasto" /></label>}
+            </div>
+            {webiss && <p className="painel-cinza">No ambiente de testes, o WebISS usa a homologação (homologacao.webiss.com.br): informe o código IBGE e a inscrição municipal que vierem no CeC de homologação (o manual indica IBGE 9999999). Endereço completo do tomador e código de tributação municipal na matriz são obrigatórios.</p>}
+            <div className="painel-form-linha">
               <label>Ambiente
                 <select className="painel-select" value={String(form.ambiente)} onChange={(e) => set("ambiente", e.target.value)}>
-                  <option value="producao_restrita">Produção restrita (testes, sem valor fiscal)</option>
+                  <option value="producao_restrita">{webiss ? "Homologação do WebISS (testes, sem valor fiscal)" : "Produção restrita (testes, sem valor fiscal)"}</option>
                   <option value="producao">Produção (nota com valor fiscal)</option>
                 </select>
               </label>
               <label>Código IBGE do município emissor<Input value={String(form.codigoIbge)} onChange={(e) => set("codigoIbge", e.target.value)} placeholder="2919553" /></label>
             </div>
             <div className="painel-form-linha">
-              <label>Série da DPS<Input value={String(form.serie)} onChange={(e) => set("serie", e.target.value)} /></label>
-              <label>Próximo número da DPS<Input inputMode="numeric" value={String(form.proximoNumero)} onChange={(e) => set("proximoNumero", e.target.value)} /></label>
+              <label>{webiss ? "Série do RPS" : "Série da DPS"}<Input value={String(form.serie)} onChange={(e) => set("serie", e.target.value)} /></label>
+              <label>{webiss ? "Próximo número do RPS" : "Próximo número da DPS"}<Input inputMode="numeric" value={String(form.proximoNumero)} onChange={(e) => set("proximoNumero", e.target.value)} /></label>
             </div>
             <div className="painel-form-linha">
-              <label>Inscrição municipal<Input value={String(form.inscricaoMunicipal)} onChange={(e) => set("inscricaoMunicipal", e.target.value)} placeholder="Obrigatória se cadastrada no município" /></label>
+              <label>Inscrição municipal<Input value={String(form.inscricaoMunicipal)} onChange={(e) => set("inscricaoMunicipal", e.target.value)} placeholder={webiss ? "Obrigatória no WebISS" : "Obrigatória se cadastrada no município"} /></label>
               <label>Situação no Simples Nacional
                 <select className="painel-select" value={String(form.opSimples)} onChange={(e) => set("opSimples", e.target.value)}>
                   <option value="3">Optante ME/EPP</option><option value="2">MEI</option><option value="1">Não optante</option>
@@ -181,9 +198,9 @@ export default function ConfiguracaoNfse({ empresas }: { empresas: { id: string;
             <details className="integracao-historico" open>
               <summary>Notas emitidas</summary>
               <table className="painel-tabela">
-                <thead><tr><th>Número</th><th>Tomador</th><th>Valor</th><th>Ambiente</th><th>Chave de acesso</th></tr></thead>
+                <thead><tr><th>Número</th><th>Tomador</th><th>Valor</th><th>Ambiente</th><th>Chave / código de verificação</th></tr></thead>
                 <tbody>{dados.emitidas.map((n) => (
-                  <tr key={n.chave_acesso}><td>{n.numero}</td><td>{n.tomador_nome}</td><td>{brl(n.valor_servicos)}</td><td>{n.ambiente === "producao" ? "Produção" : "Produção restrita"}</td><td><small>{n.chave_acesso}</small></td></tr>
+                  <tr key={`${n.numero}-${n.chave_acesso ?? n.codigo_verificacao}`}><td>{n.numero}</td><td>{n.tomador_nome}</td><td>{brl(n.valor_servicos)}</td><td>{n.ambiente === "producao" ? "Produção" : "Testes"}</td><td><small>{n.chave_acesso ?? n.codigo_verificacao}</small></td></tr>
                 ))}</tbody>
               </table>
             </details>
