@@ -176,3 +176,66 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .contraparte.ok{color:#15803d}
 .contraparte.nova{color:#b45309}
 .contraparte .text-button{margin-left:4px}
+
+/* Página inicial pública (lp) e assistente de entrada (5 etapas) */
+.lp,.assistente{min-height:100svh;background:var(--background);color:var(--foreground)}
+.lp-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px clamp(16px,5vw,64px);flex-wrap:wrap}
+.lp-topo nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:.9375rem}
+.lp-topo nav a{color:var(--foreground);text-decoration:none}
+.lp-botao{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff!important;border-radius:10px;padding:12px 20px;font-weight:600;text-decoration:none;border:0}
+.lp-botao.pequeno{padding:8px 14px}
+.lp-botao.secundario{background:var(--accent);color:var(--accent-foreground)!important;justify-content:center}
+.lp-link{color:var(--primary);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.lp-hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center;padding:40px clamp(16px,5vw,64px) 56px}
+.lp-hero h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.1;margin:12px 0}
+.lp-hero p{font-size:1.125rem;color:var(--muted-foreground);max-width:560px}
+.lp-acoes{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:24px}
+.lp-selo{display:inline-block;background:var(--accent);color:var(--accent-foreground);border-radius:999px;padding:4px 12px;font-size:.8125rem;font-weight:600}
+.lp-destaques{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.lp-destaques li{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.lp-destaques svg{color:var(--primary);flex:none;margin-top:2px}
+.lp-secao{padding:40px clamp(16px,5vw,64px)}
+.lp-secao h2{font-size:1.75rem;margin:0 0 6px}
+.lp-sub{color:var(--muted-foreground);margin:0 0 24px}
+.lp-etapas{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.lp-etapas li{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem}
+.lp-etapas li span:last-of-type{color:var(--muted-foreground)}
+.lp-etapas em{font-style:normal;font-size:.75rem;color:var(--accent-foreground);background:var(--accent);border-radius:999px;padding:2px 8px;align-self:flex-start}
+.lp-numero{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700}
+.lp-planos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.lp-plano{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px;position:relative}
+.lp-plano.destaque{border-color:var(--primary);box-shadow:0 12px 32px rgba(21,119,180,.12)}
+.lp-plano h3{margin:0;font-size:1.25rem}
+.lp-plano p{margin:0;color:var(--muted-foreground)}
+.lp-preco{font-size:1.125rem}
+.lp-plano ul{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:8px;font-size:.9375rem;flex:1}
+.lp-plano li{display:flex;gap:8px;align-items:flex-start}
+.lp-plano li svg{color:var(--primary);flex:none;margin-top:3px}
+.lp-seguranca{display:flex;gap:16px;align-items:flex-start}
+.lp-seguranca svg{color:var(--primary);flex:none;margin-top:6px}
+.lp-seguranca p{color:var(--muted-foreground);max-width:760px}
+.lp-rodape{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:24px clamp(16px,5vw,64px);border-top:1px solid var(--border);font-size:.875rem;color:var(--muted-foreground)}
+.lp-rodape a{color:inherit}
+.assistente-passos{list-style:none;margin:0 auto;padding:8px 16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:980px}
+.assistente-passos li{display:flex;align-items:center;gap:6px;font-size:.8125rem;color:var(--muted-foreground);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 12px}
+.assistente-passos li span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--border);color:var(--foreground);font-size:.75rem;font-weight:700}
+.assistente-passos li small{font-size:.6875rem;color:var(--accent-foreground)}
+.assistente-passos li.atual{border-color:var(--primary);color:var(--foreground);font-weight:600}
+.assistente-passos li.atual span{background:var(--primary);color:#fff}
+.assistente-passos li.feita span{background:#1E6B43;color:#fff}
+.assistente-cartao{max-width:980px;margin:16px auto 48px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(18px,4vw,36px)}
+.assistente-form{display:flex;flex-direction:column;gap:14px}
+.assistente-form h1,.assistente-aviso h1{margin:0;font-size:1.5rem}
+.assistente-form label{display:flex;flex-direction:column;gap:6px;font-size:.875rem;font-weight:600}
+.assistente-form .check-option{flex-direction:row;align-items:flex-start;font-weight:400}
+.assistente-cnpj{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.assistente-cnpj label{flex:1;min-width:220px}
+.assistente-espera{background:#FFF7E6;color:#8A5A00;border-radius:10px;padding:12px 14px}
+.assistente-lista{display:grid;gap:8px;margin:0;padding-left:20px}
+.assistente-aviso{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.assistente .acesso-erro{background:#FDECEC;color:#9B1C1C;border-radius:8px;padding:10px 12px;font-size:.875rem}
+.assistente .acesso-ok{background:#E8F6EE;color:#1E6B43;border-radius:8px;padding:10px 12px;font-size:.875rem;margin:0}
+.assistente .acesso-link{color:var(--primary);background:none;border:0;padding:0;cursor:pointer;font:inherit;text-decoration:underline;align-self:flex-start}
+.lp-planos.compacto .lp-plano{padding:18px}
+@media (max-width:900px){.lp-hero{grid-template-columns:1fr}.lp-etapas{grid-template-columns:repeat(2,minmax(0,1fr))}.lp-planos{grid-template-columns:1fr}}
+@media (max-width:520px){.lp-etapas{grid-template-columns:1fr}.lp-topo nav{gap:12px}}
