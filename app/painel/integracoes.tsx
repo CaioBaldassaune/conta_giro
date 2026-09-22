@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ConfiguracaoNfse from "./configuracao-nfse";
+import ConfiguracaoOpenFinance from "./configuracao-openfinance";
 
 type Situacao = {
   titular: boolean;
@@ -131,6 +132,7 @@ export default function Integracoes({ empresas }: { empresas: { id: string; nome
       </section>
 
       <ConfiguracaoNfse empresas={empresas} />
+      <ConfiguracaoOpenFinance />
     </div>
   );
 }

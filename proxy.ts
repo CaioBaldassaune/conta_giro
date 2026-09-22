@@ -40,6 +40,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Separação de acessos: o portal do contador é exclusivo da equipe do escritório. O cliente
+  // logado que tentar abri-lo vai para o próprio portal. (O servidor e o RLS também negam os
+  // dados; aqui é para a pessoa nem ver as telas.) O contador pode abrir o portal do cliente.
+  if (portal === "contador" && user && !paginaDeEntrada) {
+    const { data: equipe } = await supabase.from("membros_escritorio").select("escritorio_id").eq("usuario_id", user.id).limit(1);
+    if (!equipe?.length) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/cliente";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return response;
 }
 

@@ -128,11 +128,17 @@ export async function getState(portal: Portal, companyId?: string, period = mesA
     if (!ids.length) throw new SemAcesso("sem_empresa");
   } else {
     ids = [...a.empresasCliente.keys()];
+    // O contador pode abrir o portal do cliente (visão do cliente de qualquer empresa da carteira).
+    if (!ids.length && a.escritorios.length) {
+      const { data } = await sb.from("empresas").select("id").in("escritorio_id", a.escritorios).order("razao_social");
+      ids = (data ?? []).map((e) => e.id as string);
+    }
     if (!ids.length) throw new SemAcesso("sem_convite");
   }
 
   const selected = companyId && ids.includes(companyId) ? companyId : ids[0];
-  const role: Role = portal === "contador" ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
+  // O papel vem do vínculo no banco (nunca do portal pedido): equipe do escritório = contador.
+  const role: Role = portal === "contador" || !a.empresasCliente.has(selected) ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
   const comCarteira = portal === "contador" && !!opcoes.carteira;
   const carregadas = await carregarEmpresas(sb, comCarteira ? ids : [selected]);
   const atual = carregadas.get(selected);

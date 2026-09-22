@@ -1,4 +1,4 @@
-import { fail, identity, sameOrigin } from "@/lib/server";
+import { acessos, fail, identity, sameOrigin } from "@/lib/server";
 import { requireThat } from "@/lib/domain";
 import { erroDoBanco } from "@/lib/repositorio";
 
@@ -6,7 +6,9 @@ import { erroDoBanco } from "@/lib/repositorio";
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     sameOrigin(request);
-    const { sb } = await identity();
+    const { sb, u } = await identity();
+    // Cadastro da empresa: só a equipe do escritório altera (o RLS também exige).
+    requireThat((await acessos(sb, u.id)).escritorios.length, "Somente a equipe do escritório altera o cadastro da empresa.", 403);
     const dados = await request.json();
     const alteracao: Record<string, unknown> = {};
     if (dados.cnpj !== undefined) {

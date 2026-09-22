@@ -226,6 +226,9 @@ export function montarEmpresa(t: TabelasEmpresa): { company: Company; records: E
     justification: r.justificativa, needsReview: r.precisa_revisao, classifiedAt: instante(r.classificado_em),
     otherReview: r.natureza_outras ? { nature: NATUREZA_OUTRAS.regra(r.natureza_outras), note: r.parecer_outras, by: r.revisado_outras_por, at: instante(r.revisado_outras_em) } : null,
     account: contas.get(r.conta_bancaria_id) ?? "Conta", source: r.arquivo_origem, fileHash: r.hash_arquivo, fitId: r.fit_id,
+    // Open Finance: origem, id da transação no provedor e contraparte (cruzada com os cadastros na tela).
+    origin: r.origem ?? "arquivo", externalId: r.id_externo ?? null, counterpartName: r.contraparte_nome ?? null,
+    counterpartDoc: r.contraparte_documento ?? null, providerCategory: r.categoria_provedor ?? null,
   }));
 
   for (const r of t.regras_classificacao ?? []) records.push(entrada("rule", r.id, mes(r.criado_em), {
@@ -420,6 +423,8 @@ function paraLinhas(e: Entry, ctx: ContextoTraducao, novo: boolean): LinhaTabela
           natureza_outras: revisao ? NATUREZA_OUTRAS.banco(revisao.nature) : null, parecer_outras: revisao?.note ?? null,
           revisado_outras_por: revisao?.by ?? null, revisado_outras_em: revisao?.at ?? null,
           arquivo_origem: ou(d.source), hash_arquivo: ou(d.fileHash), fit_id: ou(d.fitId),
+          origem: d.origin ?? "arquivo", id_externo: ou(d.externalId), contraparte_nome: ou(d.counterpartName),
+          contraparte_documento: ou(d.counterpartDoc), categoria_provedor: ou(d.providerCategory),
         }),
       ];
     }

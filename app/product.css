@@ -163,3 +163,16 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .pgdas-previa .total{border-top:1px solid var(--border,#e2e8f0);padding-top:6px;font-weight:600}
 .pgdas-confirmar{margin-top:8px}
 @media (max-width:560px){.pgdas-cabecalho,.pgdas-linha{grid-template-columns:minmax(0,1fr) 110px 36px}}
+
+/* Open Finance: cartão da conexão e contraparte dos lançamentos */
+.openfinance-cartao{display:grid;gap:10px;margin-bottom:12px}
+.openfinance-topo{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.openfinance-topo>div:nth-child(2){flex:1;min-width:220px}
+.openfinance-topo p{margin:2px 0 0}
+.openfinance-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.openfinance-conta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;border-top:1px solid var(--border,#e2e8f0);padding-top:8px}
+.openfinance-form{display:grid;gap:10px;border-top:1px solid var(--border,#e2e8f0);padding-top:10px}
+.contraparte{display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-top:2px;flex-wrap:wrap}
+.contraparte.ok{color:#15803d}
+.contraparte.nova{color:#b45309}
+.contraparte .text-button{margin-left:4px}
