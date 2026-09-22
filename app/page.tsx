@@ -56,7 +56,8 @@ export default function Inicio() {
 
       <footer className="site-rodape">
         <span>© ContaGiro</span>
-        <Link href="/cliente/entrar">Entrar</Link>
+        {/* Acesso da equipe do escritório: discreto, no rodapé (o cliente entra pelo topo). */}
+        <Link href="/contador/entrar">Acesso do escritório</Link>
       </footer>
     </main>
   );
