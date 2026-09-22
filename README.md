@@ -17,16 +17,22 @@ Portal de validação de contabilidade self-service para prestadores de serviço
 - Competências adicionais; declaração de ausência de movimentação. DRE gerencial por caixa, análise horizontal, variação com base zero sinalizada, notas determinísticas e exportação CSV arquivada. Nota emitida não é somada novamente ao recebimento. Outras entradas pendentes ficam fora do resultado.
 - Matriz contábil opcional: códigos reduzidos, saldos iniciais equilibrados e mapeamento de categorias. Lançamentos preparatórios do extrato, ajustes manuais, revisão individual, balancete e fechamento condicionado ao aceite do serviço extra. Exportador TXT no leiaute Domínio Separador, registros 0000/6000/6100. Separadores e casas decimais conferidos também no arquivo de exemplo do fornecedor. Códigos do destino e importação ainda precisam de homologação no Domínio. O balanço oficial e sua assinatura são concluídos na ferramenta contábil.
 
+## Documentação técnica (comece aqui)
+
+- [docs/LEIA-ME-PROGRAMADOR.md](docs/LEIA-ME-PROGRAMADOR.md): o que é, como rodar, mapa do código, fluxo de uma ação, banco e roteiro de validação.
+- [docs/DECISOES.md](docs/DECISOES.md): o que foi feito e por quê.
+- [docs/SEGURANCA.md](docs/SEGURANCA.md): acessos, RLS, cofre, cabeçalhos, LGPD e pendências.
+- [docs/INTEGRACOES.md](docs/INTEGRACOES.md): SERPRO, PGDAS-D, NFS-e (Nacional e WebISS), Open Finance, CNPJ/CEP e Domínio.
+
 ## Arquitetura (setembro de 2026)
 
 O ContaGiro é o ERP do cliente e o portal do escritório; o Domínio continua sendo o centro da apuração e da escrituração.
 
 - **Aplicação:** Next.js 16 (App Router) hospedado na Vercel.
-- **Banco, login e arquivos:** Supabase (Postgres com RLS, Auth e Storage, bucket privado `documentos`).
-- **Portais:** `/contador` (equipe do escritório; o primeiro acesso cadastra o escritório) e `/cliente` (usuários da empresa; acesso somente por convite com token de uso único).
-- **Regras de negócio:** `lib/domain.ts`, `lib/contagiro.ts` e `lib/reporting.ts`, inalteradas.
-- **Tradução para o banco:** `lib/traducao.ts` converte os registros das regras para as tabelas normalizadas em português e de volta; `lib/repositorio.ts` carrega e grava.
-- **Gravação:** cada ação é gravada de forma atômica por `public.aplicar_alteracoes` (RLS do usuário, trava otimista por empresa e auditoria). Em conflito, o servidor recarrega e reaplica a regra.
+- **Banco, login e arquivos:** Supabase (Postgres com RLS, Auth, Storage privado `documentos` e Vault para segredos).
+- **Portais:** `/contador` (exclusivo da equipe do escritório; pode abrir a visão do cliente) e `/cliente` (usuários da empresa, por convite ou pela entrada em 5 etapas em `/comecar`). Página inicial pública em `/`.
+- **Regras de negócio:** `lib/domain.ts`, `lib/contagiro.ts` e `lib/reporting.ts` (herdadas, puras e testadas).
+- **Tradução para o banco:** `lib/traducao.ts` e `lib/repositorio.ts`; gravação atômica por `public.aplicar_alteracoes`.
 - **Migrações:** `supabase/migrations/`.
 
 ## Ambientes
@@ -35,21 +41,9 @@ O ContaGiro é o ERP do cliente e o portal do escritório; o Domínio continua s
 | --- | --- | --- |
 | Local | `npm run dev` → http://localhost:3000 | Requer `.env.local` (ver `.env.example`). |
 | Homologação | Vercel Preview da branch `homologacao` | Protegido por login da Vercel; Supabase `contagiro-homolog`. |
-| Produção | branch `main` | Ainda não publicada para uso. |
+| Produção | branch `main` | Não publicada nesta fase. |
 
-Comandos: `npm test` (regras e tradução), `npm run typecheck`, `npm run build`.
-
-## Limitações operacionais explícitas
-
-Nenhuma integração oficial foi conectada: NFS-e, Integra Contador, DAS, situação fiscal, parcelamentos, cobrança, e-mail/push, Open Finance e folha oficial. Mensagens existem no portal. Captura de câmera depende do navegador/dispositivo e aceita PDF/JPG/PNG até 10 MB. OFX/CSV conhecidos até 2 MB e 500 linhas. HEIC e conversões ainda não implementados.
-
-DRE por caixa não substitui DRE por competência nem balanço patrimonial. Um lote equilibrado não comprova completude da escrituração. Taxas locais são estimativas limitadas a 2026; não reutilizar regras em 2027. O cadastro verifica formatos e exige confirmação do contador; não consulta automaticamente CNAEs/CNPJ, cadastros municipais ou autorização para emissão.
-
-## Verificação
-
-- `npm test`: 21 testes das regras originais e 5 de ida e volta pelo banco (tradução).
-- RLS testado no Supabase com escritórios distintos e papéis de cliente (sócio, financeiro, emissor, anônimo).
-- Fluxos testados no navegador: cadastro do escritório, carteira, classificação, matriz, convite, aceite pelo cliente, nota simulada e documentos.
+Comandos: `npm test` (63 testes), `npm run typecheck`, `npm run build`.
 
 ## Fontes da implementação
 

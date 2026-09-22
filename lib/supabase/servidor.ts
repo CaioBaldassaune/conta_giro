@@ -1,3 +1,4 @@
+// Cliente do Supabase no servidor com a sessão do usuário (cookies): as consultas respeitam o RLS.
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { exigirConfiguracaoSupabase } from "./config";

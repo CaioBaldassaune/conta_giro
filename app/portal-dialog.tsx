@@ -1,4 +1,5 @@
 "use client";
+// Diálogos das ações do portal (classificar, importar extrato, enviar documento, conferir ISS...).
 import { useState, type FormEvent } from "react";
 import { AlertCircle, CheckCircle2, ChevronRight, Download, FileCheck2, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";

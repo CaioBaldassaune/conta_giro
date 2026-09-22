@@ -1,3 +1,9 @@
+// Núcleo das regras de negócio (herdado da versão do ChatGPT Sites, mantido quase intacto).
+// Tudo o que a empresa registra é um Entry { id, kind, period, data }: competência (period),
+// lançamento (transaction), nota (invoice), documento, solicitação etc. reduceAction() aplica uma
+// ação do usuário e devolve as alterações; nada aqui acessa banco ou rede, por isso é testável.
+// Também concentra o calendário de competências (notas no mês corrente, apuração só de mês
+// encerrado — horário de Brasília) e a matriz de permissões por papel (allowed()).
 export type Role = "accountant" | "owner" | "finance" | "issuer" | "viewer";
 export type Kind = "period" | "invoice" | "transaction" | "rule" | "payable" | "request" | "charge" | "document" | "history" | "invitation" | "contact" | "task" | "lead" | "subscription" | "employee" | "payroll" | "tax_version" | "notification" | "journal" | "accounting" | "document_event";
 export type Entry = { id: string; kind: Kind; period: string; data: Record<string, any> };

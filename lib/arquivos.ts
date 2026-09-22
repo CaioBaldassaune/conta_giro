@@ -1,3 +1,5 @@
+// Arquivos no Storage (bucket privado "documentos"): caminho por escritório/empresa/documento e
+// hash SHA-256 para registrar a versão exata de cada arquivo.
 import { DomainError } from "./domain";
 import type { ClienteSupabase } from "./supabase/servidor";
 

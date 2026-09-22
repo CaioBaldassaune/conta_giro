@@ -1,4 +1,8 @@
 "use client";
+// Casca dos dois portais (/contador e /cliente): menu, seletor de empresa e competência, e a
+// tela da página atual. Separação de acessos: no portal do cliente é sempre modo cliente; as telas
+// do escritório (painel, chamados, integrações...) só existem no modo contador. O servidor e o RLS
+// também negam os dados; aqui é para a pessoa nem ver o que não é dela.
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Bell, Building2, CalendarDays, CheckCircle2, CircleHelp, FileCheck2, FolderOpen, Landmark, LayoutDashboard, Loader2, MessageSquare, Plus, ReceiptText, Settings2, ShieldCheck, Upload, Wallet } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";

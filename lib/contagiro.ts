@@ -1,3 +1,6 @@
+// Extensões das regras (herdadas): matriz tributária por atividade, notas por atividade com
+// sugestão de ISS, Fator R, contatos, tarefas, folha, cobranças e documentos. applyAction()
+// trata essas ações e delega o restante a reduceAction() (lib/domain.ts). Sem banco e sem rede.
 import { type Action, type Activity, type Change, type Company, type Entry, type Role, allowed, categoryLabels, expenseCategories, getPeriod, inPeriod, money, normalize, parseMoney, reduceAction, requireThat, textField, totals, validDate, PERIOD, exigirMesDeEmissao, exigirMesEncerrado, hojeBrasilia, mesApuracao, mesAtual } from './domain';
 
 export const monthShift=(month:string,n:number)=>{const d=new Date(`${month}-15T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+n);return d.toISOString().slice(0,7);};

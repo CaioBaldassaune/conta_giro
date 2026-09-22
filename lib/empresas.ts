@@ -1,3 +1,5 @@
+// Cadastro de empresa pela equipe do escritório (painel). A empresa nasce com o mês de apuração
+// (anterior) e o mês corrente abertos. O autocadastro do cliente fica em app/api/onboarding.
 import { requireThat, mesApuracao, mesAtual, type Company, type Entry } from "./domain";
 import { demoCompany, demoRecords } from "./seed";
 import { erroDoBanco, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";

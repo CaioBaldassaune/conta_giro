@@ -1,4 +1,6 @@
 'use client';
+// Diálogos das ações estendidas (matriz, contato com endereço pelo CEP, nota por atividade,
+// tarefas, folha, contabilidade). O CEP é consultado no ViaCEP pelo navegador (só o CEP sai).
 import { useState,useEffect,type FormEvent } from 'react';
 import { Plus,Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -1,4 +1,6 @@
 'use client';
+// Telas estendidas (herdadas): matriz tributária, contatos, folha, documentos, DRE, contabilidade,
+// gestão da carteira e cobranças do escritório.
 import { useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileCheck2, FolderOpen, ListChecks, Plus, Search, ShieldCheck, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';

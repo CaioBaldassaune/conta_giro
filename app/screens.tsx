@@ -1,4 +1,6 @@
 "use client";
+// Telas do espaço da empresa (herdadas e estendidas): visão geral, Movimentações (extrato,
+// Open Finance D+1, contraparte x cadastros, categorização), notas fiscais e fechamento mensal.
 import { useState } from "react";
 import { AlertCircle, ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileCheck2, LockKeyhole, ReceiptText, Search, Sparkles, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";

@@ -1,3 +1,6 @@
+// Cliente com a chave de SERVIÇO (ignora o RLS). Só no servidor ("server-only") e só onde é
+// indispensável: cofre (Vault), integrações (SERPRO, NFS-e, Open Finance) e autocadastro.
+// Toda rota que usa este cliente confere o papel do usuário ANTES (ver docs/SEGURANCA.md).
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { DomainError } from "../domain";

@@ -1,4 +1,5 @@
 "use client";
+// Componentes visuais compartilhados das telas herdadas (Info, Status, Metric, SelectField...).
 import type { ReactNode } from "react";
 import { CircleHelp, FolderOpen, type LucideIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

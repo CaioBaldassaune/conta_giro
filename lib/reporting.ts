@@ -1,3 +1,6 @@
+// Contabilidade gerencial (herdada): matriz contábil, lançamentos a partir do extrato, balancete,
+// DRE por caixa e exportação no leiaute Domínio Separador (registros 0000/6000/6100).
+// O fechamento contábil exige mês encerrado (regra de competências).
 import { type Company, type Entry, type Action, type Change, type Role, categoryLabels, dateLabel, expenseCategories, exigirMesEncerrado, getPeriod, inPeriod, requireThat, textField, parseMoney, validDate } from './domain';
 import { monthShift, validPeriod } from './contagiro';
 export const dreLines=[['revenue','Receitas de serviços'],['other','Outras receitas operacionais conferidas'],['deductions','(-) Tributos pagos'],['net','Receita líquida gerencial'],['cost','(-) Custos dos serviços'],['people','(-) Pessoal'],['operating','(-) Despesas operacionais'],['operatingResult','Resultado operacional'],['financial','Resultado financeiro'],['result','Resultado gerencial do período']] as const;

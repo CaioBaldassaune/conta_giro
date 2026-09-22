@@ -1,4 +1,5 @@
 "use client";
+// Telas operacionais (herdadas): agenda financeira, solicitações, documentos e carteira.
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3, Download, FileText, FolderOpen, Landmark, Plus, PlugZap, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";

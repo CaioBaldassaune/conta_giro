@@ -1,3 +1,4 @@
+// Convite de acesso do cliente: token aleatório de uso único; no banco só fica o hash.
 import { createHash, randomBytes } from "node:crypto";
 import { requireThat } from "./domain";
 import { erroDoBanco } from "./repositorio";

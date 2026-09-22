@@ -1,3 +1,5 @@
+// Cliente do Supabase no navegador (chave pública): só login e sessão; os dados passam pelas
+// rotas /api, e o RLS vale mesmo se alguém chamar o Supabase direto.
 import { createBrowserClient } from "@supabase/ssr";
 import { exigirConfiguracaoSupabase } from "./config";
 

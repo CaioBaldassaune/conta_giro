@@ -1,3 +1,5 @@
+// Importação manual de extrato (OFX e CSV) e sugestão de categoria pelas regras da empresa.
+// Continua valendo para quem não conecta o Open Finance; limites: 2 MB e 500 lançamentos.
 import { DomainError, normalize, parseMoney, requireThat, validDate, type Entry } from "./domain";
 export type ImportedRow={date:string;description:string;amount:number;fitId:string|null;line:number;possibleDuplicate:boolean};
 function parseDate(v:string):string {const s=v.trim();let result="";if(/^\d{8}/.test(s))result=`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;else if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))result=s.split("/").reverse().join("-");else result=s;requireThat(validDate(result),`Data inválida: ${s.slice(0,30)}.`);return result;}

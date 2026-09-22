@@ -1,3 +1,4 @@
+// Dados fictícios das empresas de demonstração e dos testes (nunca usados para empresa real).
 import { type Company, type Entry, PERIOD } from "./domain";
 export function demoCompany(id:string,name:string):Company {return {id,name,version:0,data:{demo:true,cnpj:"",email:"financeiro@example.com",phone:"",active:true,tax:{regime:"competencia",annex:"III",municipality:"São Paulo / SP",service:"Serviços administrativos",factorR:false,version:1,validated:true}}};}
 export function demoRecords(companyId:string,index=0):Entry[] {

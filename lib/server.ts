@@ -1,3 +1,8 @@
+// Camada de servidor das rotas /api: identifica o usuário (Supabase Auth), descobre o papel dele
+// na empresa pelos VÍNCULOS NO BANCO (nunca pelo portal pedido), carrega os dados e grava com
+// retentativa em conflito de versão. getState() monta o estado da tela do portal.
+// Regra de acesso: equipe do escritório = contador (vê a carteira toda e pode abrir a visão do
+// cliente); membro da empresa = cliente (sócio, financeiro, emissor ou consulta) e só vê a própria.
 import { criarClienteServidor, type ClienteSupabase } from "@/lib/supabase/servidor";
 import { DomainError, mesApuracao, mesAtual, requireThat, visibleKinds, type Audit, type Change, type Entry, type Role, type WorkspaceState } from "./domain";
 import { carregarEmpresas, ConflitoDeVersao, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";
