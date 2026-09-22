@@ -49,7 +49,6 @@ são intencionais): `aceitar_convite` (valida o token), `reservar_numero_dps` (c
 ## Pendências de segurança (antes de produção)
 
 1. **Ativar a proteção contra senhas vazadas** no Supabase Auth (aviso do Supabase).
-0. **Guardar os códigos de recuperação do segundo fator**: se o celular da equipe se perder, o fator precisa ser removido no banco (`auth.mfa_factors`) para cadastrar outro.
 2. **Confirmação de e-mail obrigatória** no cadastro (o assistente já trata o caso de confirmação).
 3. **Trocar a `SUPABASE_SECRET_KEY`** usada na homologação (ela circulou durante a configuração).
 4. **Limite de tentativas** (rate limit) nas rotas públicas/autenticação e CAPTCHA no cadastro.
@@ -57,3 +56,4 @@ são intencionais): `aceitar_convite` (valida o token), `reservar_numero_dps` (c
 6. Avaliar criptografia de coluna para CPF/CNPJ de contrapartes (hoje protegidos por RLS e
    criptografia de disco).
 7. Revisão do texto dos termos de uso e política de privacidade.
+8. **Perda do celular da equipe:** o segundo fator precisa ser removido no banco (`auth.mfa_factors`) para a pessoa cadastrar outro. Defina quem faz isso e como confirma a identidade.
