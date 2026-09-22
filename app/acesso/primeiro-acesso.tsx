@@ -14,7 +14,7 @@ async function enviar(url: string, corpo: unknown) {
 }
 
 export async function sair(destino: string) {
-  await criarClienteNavegador().auth.signOut();
+  await criarClienteNavegador(destino.startsWith("/contador") ? "contador" : "cliente").auth.signOut();
   window.location.assign(destino);
 }
 

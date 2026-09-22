@@ -120,12 +120,17 @@ Nomes em português, minúsculos, com `_`. Valores em **centavos** (bigint). Com
 ## 7. O que conferir (roteiro de validação)
 
 1. `npm test` e `npm run typecheck` sem erros.
-2. **Acessos:** com um usuário cliente, abrir `/contador` deve levar a `/cliente`; `?view=painel`
-   no portal do cliente não mostra o painel; as rotas `/api/carteira`, `/api/chamados`,
-   `/api/serpro/*` e `/api/integracoes/*` devem responder 403 para cliente.
+2. **Acessos:** as sessões são separadas por cookie (`cg-sessao-contador` / `cg-sessao-cliente`):
+   logado no escritório, `/comecar` deve abrir como visitante. `/contador` só entra com senha **e**
+   código do autenticador (no primeiro acesso, cadastra em `/contador/seguranca`). `?view=painel`
+   no portal do cliente não mostra o painel; `/api/carteira`, `/api/chamados`, `/api/serpro/*` e
+   `/api/integracoes/*` respondem 403 para cliente. Sem o segundo fator, o próprio banco não
+   devolve dados da carteira (teste chamando a API do Supabase com o token de um contador `aal1`).
 3. **RLS:** consultar tabelas com a chave pública e o token de um cliente só devolve a empresa dele.
-4. **Entrada (/comecar):** criar conta nova, buscar CNPJ, escolher plano, aceitar termos, informar
-   procuração → cai em `/cliente`; o escritório recebe um chamado "configurar a grade tributária".
+4. **Entrada (/comecar):** criar conta, informar o CNPJ (os dados vêm da Receita), confirmar,
+   escolher plano, aceitar termos e informar a procuração → cai em `/cliente`, com os "Primeiros
+   passos" (banco, certificado A1 enviado pelo próprio sócio, cadastros). O escritório recebe um
+   chamado "configurar a grade tributária".
 5. **Open Finance:** na empresa de exemplo, Movimentações → Conectar conta → "Usar conta de
    demonstração"; reabrir no dia seguinte deve trazer o extrato de ontem sozinho (D+1), sem
    duplicar. Contrapartes cadastradas aparecem com o nome; as outras com "Cadastrar".

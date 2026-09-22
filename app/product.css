@@ -177,65 +177,102 @@ html{font-size:16px}body{margin:0;background:var(--background);color:var(--foreg
 .contraparte.nova{color:#b45309}
 .contraparte .text-button{margin-left:4px}
 
-/* Página inicial pública (lp) e assistente de entrada (5 etapas) */
-.lp,.assistente{min-height:100svh;background:var(--background);color:var(--foreground)}
-.lp-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px clamp(16px,5vw,64px);flex-wrap:wrap}
-.lp-topo nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:.9375rem}
-.lp-topo nav a{color:var(--foreground);text-decoration:none}
-.lp-botao{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff!important;border-radius:10px;padding:12px 20px;font-weight:600;text-decoration:none;border:0}
-.lp-botao.pequeno{padding:8px 14px}
-.lp-botao.secundario{background:var(--accent);color:var(--accent-foreground)!important;justify-content:center}
-.lp-link{color:var(--primary);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-.lp-hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center;padding:40px clamp(16px,5vw,64px) 56px}
-.lp-hero h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.1;margin:12px 0}
-.lp-hero p{font-size:1.125rem;color:var(--muted-foreground);max-width:560px}
-.lp-acoes{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:24px}
-.lp-selo{display:inline-block;background:var(--accent);color:var(--accent-foreground);border-radius:999px;padding:4px 12px;font-size:.8125rem;font-weight:600}
-.lp-destaques{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.lp-destaques li{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-.lp-destaques svg{color:var(--primary);flex:none;margin-top:2px}
-.lp-secao{padding:40px clamp(16px,5vw,64px)}
-.lp-secao h2{font-size:1.75rem;margin:0 0 6px}
-.lp-sub{color:var(--muted-foreground);margin:0 0 24px}
-.lp-etapas{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-.lp-etapas li{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem}
-.lp-etapas li span:last-of-type{color:var(--muted-foreground)}
-.lp-etapas em{font-style:normal;font-size:.75rem;color:var(--accent-foreground);background:var(--accent);border-radius:999px;padding:2px 8px;align-self:flex-start}
-.lp-numero{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700}
-.lp-planos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.lp-plano{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px;position:relative}
-.lp-plano.destaque{border-color:var(--primary);box-shadow:0 12px 32px rgba(21,119,180,.12)}
-.lp-plano h3{margin:0;font-size:1.25rem}
-.lp-plano p{margin:0;color:var(--muted-foreground)}
-.lp-preco{font-size:1.125rem}
-.lp-plano ul{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:8px;font-size:.9375rem;flex:1}
-.lp-plano li{display:flex;gap:8px;align-items:flex-start}
-.lp-plano li svg{color:var(--primary);flex:none;margin-top:3px}
-.lp-seguranca{display:flex;gap:16px;align-items:flex-start}
-.lp-seguranca svg{color:var(--primary);flex:none;margin-top:6px}
-.lp-seguranca p{color:var(--muted-foreground);max-width:760px}
-.lp-rodape{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:24px clamp(16px,5vw,64px);border-top:1px solid var(--border);font-size:.875rem;color:var(--muted-foreground)}
-.lp-rodape a{color:inherit}
-.assistente-passos{list-style:none;margin:0 auto;padding:8px 16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:980px}
-.assistente-passos li{display:flex;align-items:center;gap:6px;font-size:.8125rem;color:var(--muted-foreground);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 12px}
-.assistente-passos li span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--border);color:var(--foreground);font-size:.75rem;font-weight:700}
-.assistente-passos li small{font-size:.6875rem;color:var(--accent-foreground)}
-.assistente-passos li.atual{border-color:var(--primary);color:var(--foreground);font-weight:600}
-.assistente-passos li.atual span{background:var(--primary);color:#fff}
-.assistente-passos li.feita span{background:#1E6B43;color:#fff}
-.assistente-cartao{max-width:980px;margin:16px auto 48px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(18px,4vw,36px)}
-.assistente-form{display:flex;flex-direction:column;gap:14px}
-.assistente-form h1,.assistente-aviso h1{margin:0;font-size:1.5rem}
-.assistente-form label{display:flex;flex-direction:column;gap:6px;font-size:.875rem;font-weight:600}
-.assistente-form .check-option{flex-direction:row;align-items:flex-start;font-weight:400}
-.assistente-cnpj{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-.assistente-cnpj label{flex:1;min-width:220px}
-.assistente-espera{background:#FFF7E6;color:#8A5A00;border-radius:10px;padding:12px 14px}
-.assistente-lista{display:grid;gap:8px;margin:0;padding-left:20px}
-.assistente-aviso{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
-.assistente .acesso-erro{background:#FDECEC;color:#9B1C1C;border-radius:8px;padding:10px 12px;font-size:.875rem}
-.assistente .acesso-ok{background:#E8F6EE;color:#1E6B43;border-radius:8px;padding:10px 12px;font-size:.875rem;margin:0}
-.assistente .acesso-link{color:var(--primary);background:none;border:0;padding:0;cursor:pointer;font:inherit;text-decoration:underline;align-self:flex-start}
-.lp-planos.compacto .lp-plano{padding:18px}
-@media (max-width:900px){.lp-hero{grid-template-columns:1fr}.lp-etapas{grid-template-columns:repeat(2,minmax(0,1fr))}.lp-planos{grid-template-columns:1fr}}
-@media (max-width:520px){.lp-etapas{grid-template-columns:1fr}.lp-topo nav{gap:12px}}
+/* Site público, cadastro do cliente e telas de acesso — visual minimalista.
+   Referências: GOV.UK Design System (uma coisa por tela) e Nielsen Norman Group (formulários):
+   rótulo acima do campo, um botão principal por tela, texto curto, muito respiro, 16px nos
+   campos (sem zoom no iPhone) e alvos de toque com pelo menos 44px. */
+.site,.cadastro{min-height:100svh;background:#fff;color:var(--foreground)}
+.site{--largura:1040px}
+.site-topo,.cadastro-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;max-width:var(--largura,1040px);margin:0 auto;padding:20px 16px}
+.site-topo nav{display:flex;align-items:center;gap:20px;font-size:.9375rem}
+.site-topo nav a{color:var(--foreground);text-decoration:none}
+.site-botao{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;background:var(--primary);color:#fff!important;font-weight:600;text-decoration:none}
+.site-botao.pequeno{min-height:40px;padding:0 18px}
+.site-botao:focus-visible,.site a:focus-visible,.cadastro a:focus-visible,.cadastro button:focus-visible{outline:3px solid #9CC9E6;outline-offset:2px}
+.site-hero{max-width:720px;margin:0 auto;padding:72px 16px 64px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
+.site-hero h1{font-size:clamp(2.1rem,6vw,3.4rem);line-height:1.08;letter-spacing:-.02em;margin:0}
+.site-hero p{font-size:1.125rem;line-height:1.6;color:var(--muted-foreground);margin:0;max-width:560px}
+.site-hero small{color:var(--muted-foreground)}
+.site-secao{max-width:var(--largura);margin:0 auto;padding:48px 16px}
+.site-titulo{font-size:1.5rem;margin:0 0 24px;text-align:center}
+.site-beneficios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;border-top:1px solid #EEF2F4}
+.site-beneficios svg{color:var(--primary)}
+.site-beneficios h2{font-size:1.0625rem;margin:12px 0 6px}
+.site-beneficios p{margin:0;color:var(--muted-foreground);line-height:1.55}
+.site-passos{list-style:none;counter-reset:passo;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;max-width:880px}
+.site-passos li{counter-increment:passo;display:flex;flex-direction:column;gap:4px}
+.site-passos li::before{content:counter(passo);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#EEF6FC;color:var(--primary);font-weight:700;margin-bottom:8px}
+.site-passos span{color:var(--muted-foreground);font-size:.9375rem}
+.site-nota{text-align:center;color:var(--muted-foreground);margin:28px 0 0}
+.site-planos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.site-planos article{border:1px solid #E6ECF0;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.site-planos h3{margin:0;font-size:1.125rem}
+.site-planos p{margin:0;color:var(--muted-foreground)}
+.site-planos ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:.9375rem;flex:1}
+.site-planos li{display:flex;gap:8px;align-items:flex-start}
+.site-planos li svg{color:var(--primary);flex:none;margin-top:3px}
+.site-planos a{color:var(--primary);font-weight:600;text-decoration:none}
+.site-rodape{max-width:var(--largura);margin:0 auto;padding:32px 16px;display:flex;justify-content:space-between;color:var(--muted-foreground);font-size:.875rem;border-top:1px solid #EEF2F4}
+.site-rodape a{color:inherit}
+/* Cadastro: cartão estreito e focado, uma pergunta por tela */
+.cadastro{background:#F7F9FA}
+.cadastro-topo{max-width:560px}
+.cadastro-topo .muted{font-size:.875rem}
+.cadastro-progresso{max-width:528px;margin:0 auto;height:4px;border-radius:999px;background:#E3EAEE;overflow:hidden}
+.cadastro-progresso span{display:block;height:100%;background:var(--primary);transition:width .3s}
+.cadastro-cartao{max-width:528px;margin:24px auto 64px;background:#fff;border:1px solid #E6ECF0;border-radius:20px;padding:32px 28px}
+.cadastro-cartao form{display:flex;flex-direction:column;gap:18px}
+.cadastro-cartao h1{font-size:1.5rem;line-height:1.25;margin:0}
+.cadastro-cartao .muted{margin:-6px 0 0;line-height:1.55}
+.cadastro-cartao .pequeno{font-size:.8125rem;margin:0}
+.campo{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.9375rem}
+.campo small{font-weight:400;color:var(--muted-foreground);font-size:.8125rem}
+.cadastro-cartao input:not([type=checkbox]):not([type=radio]),.acesso-cartao input:not([type=checkbox]){font-size:16px;min-height:46px}
+.cadastro-cartao button[type=submit],.acesso-cartao button[type=submit]{min-height:48px;font-size:1rem}
+.duas-colunas{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.resumo{margin:0;display:grid;gap:12px;background:#F7F9FA;border-radius:14px;padding:16px}
+.resumo div{display:grid;gap:2px}
+.resumo dt{font-size:.8125rem;color:var(--muted-foreground)}
+.resumo dd{margin:0;font-weight:600}
+.opcoes{border:0;margin:0;padding:0;display:grid;gap:10px}
+.opcao{display:flex;align-items:center;gap:12px;border:1px solid #DCE4E9;border-radius:14px;padding:14px 16px;cursor:pointer}
+.opcao input{width:18px;height:18px;accent-color:var(--primary)}
+.opcao-texto{display:flex;flex-direction:column;gap:2px;flex:1}
+.opcao-texto span{color:var(--muted-foreground);font-size:.875rem}
+.opcao.marcada{border-color:var(--primary);background:#F3F9FD}
+.opcao svg{color:var(--primary)}
+.marcar{display:flex;gap:10px;align-items:flex-start;line-height:1.5;cursor:pointer}
+.marcar input{width:20px;height:20px;margin-top:2px;accent-color:var(--primary);flex:none}
+.lista-passos{margin:0;padding-left:20px;display:grid;gap:10px;line-height:1.55}
+.copiar{display:inline-flex;align-items:center;gap:4px;margin-left:6px;border:1px solid #DCE4E9;background:#fff;border-radius:999px;padding:2px 10px;font-size:.8125rem;cursor:pointer}
+.link-externo{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-weight:600;text-decoration:none}
+.link-discreto{background:none;border:0;padding:0;color:var(--primary);font:inherit;cursor:pointer;align-self:center;text-decoration:underline;text-underline-offset:3px}
+.aviso-erro{background:#FDECEC;color:#9B1C1C;border-radius:10px;padding:12px 14px;font-size:.9375rem}
+.aviso-ok{background:#E8F6EE;color:#1E6B43;border-radius:10px;padding:12px 14px;font-size:.9375rem}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+/* Acesso (entrar) e segundo fator */
+.acesso-passos{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--muted-foreground);font-size:.9375rem}
+.acesso-qr{display:flex;flex-direction:column;align-items:center;gap:10px}
+.acesso-qr img{border:1px solid #E6ECF0;border-radius:12px;padding:8px;background:#fff}
+.acesso-qr code{font-size:.75rem;word-break:break-all;color:var(--muted-foreground)}
+.acesso-rodape span{color:var(--muted-foreground)}
+/* Portal do cliente: início com primeiros passos, menu enxuto */
+.passos-cliente{background:#fff;border:1px solid #E6ECF0;border-radius:18px;padding:22px;margin-bottom:20px}
+.passos-topo{display:flex;justify-content:space-between;align-items:baseline}
+.passos-topo h2{margin:0;font-size:1.125rem}
+.passos-barra{height:4px;border-radius:999px;background:#E3EAEE;margin:12px 0 8px;overflow:hidden}
+.passos-barra span{display:block;height:100%;background:var(--primary)}
+.passos-cliente ul{list-style:none;margin:0;padding:0}
+.passos-cliente li{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid #F0F3F5}
+.passos-cliente li:first-child{border-top:0}
+.passos-cliente li>div{flex:1;min-width:0}
+.passos-cliente li p{margin:2px 0 0;color:var(--muted-foreground);font-size:.875rem}
+.passos-cliente li.feito strong{color:var(--muted-foreground);text-decoration:line-through;text-decoration-color:#B8C4CC}
+.passos-marca{width:24px;height:24px;border-radius:50%;border:2px solid #CBD6DD;display:grid;place-items:center;flex:none}
+.passos-cliente li.feito .passos-marca{background:#1E6B43;border-color:#1E6B43;color:#fff}
+.passos-certificado{display:grid;gap:12px;border-top:1px solid #F0F3F5;padding-top:14px;margin-top:4px}
+.passos-certificado label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.9375rem}
+.nav-mais{background:none;border:0;color:var(--muted-foreground);font:inherit;font-size:.8125rem;padding:12px 12px 4px;text-align:left;cursor:pointer}
+.empresa-unica{font-size:.9375rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw}
+@media (max-width:860px){.site-beneficios,.site-planos{grid-template-columns:1fr}.site-passos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.site-hero{padding-top:40px}.site-passos{grid-template-columns:1fr}.cadastro-cartao{margin:16px 12px 48px;padding:24px 18px;border-radius:16px}.duas-colunas{grid-template-columns:1fr}}

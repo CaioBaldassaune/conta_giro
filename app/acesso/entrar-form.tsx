@@ -43,7 +43,7 @@ export function FormularioAcesso({ destino, permitirCadastro, emailFixo, aoEntra
   async function enviar(e: FormEvent) {
     e.preventDefault();
     setErro(""); setAviso(""); setOcupado(true);
-    const supabase = criarClienteNavegador();
+    const supabase = criarClienteNavegador(destino.startsWith("/contador") ? "contador" : "cliente");
     try {
       if (modo === "cadastrar") {
         const { data, error } = await supabase.auth.signUp({ email, password: senha, options: { data: { nome } } });

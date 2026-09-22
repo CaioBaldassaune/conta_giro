@@ -16,7 +16,8 @@ export default async function PortalCliente() {
   // Quem começou a entrada pela página inicial e ainda não concluiu as etapas 1 a 4 volta ao assistente.
   const { data: entrada } = await sb.from("onboardings").select("etapa").eq("usuario_id", user.id).maybeSingle();
   if (entrada && entrada.etapa < 5) redirect("/comecar");
-  // O contador também abre o portal do cliente (visão do cliente das empresas da carteira).
-  if (!a.empresasCliente.size && !a.escritorios.length) return <SemConvite />;
+  // Portal exclusivo de clientes (sessão própria). O contador vê o cliente pelo portal dele
+  // ("Ver como cliente"), nunca por aqui.
+  if (!a.empresasCliente.size) return <SemConvite />;
   return <Portal portal="cliente" />;
 }

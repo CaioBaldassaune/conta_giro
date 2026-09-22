@@ -83,6 +83,10 @@ tomada (setembro de 2026).
 24. **Autocadastro grava com a chave de serviço, com todas as validações na rota.** Por quê: antes
     de ter vínculo com a empresa, o RLS (corretamente) não deixa o cliente criá-la. A rota valida
     CNPJ, impede duplicar empresa da carteira e cria o vínculo como sócio.
+25a. **Sessões separadas por portal (cookies diferentes).** Por quê: o mesmo navegador precisa poder ter o contador logado e, ao mesmo tempo, alguém se cadastrando como cliente, sem um acesso "vazar" no outro. O proxy decide qual sessão vale e sobrescreve qualquer pista vinda do navegador.
+25b. **Segundo fator obrigatório para a equipe, exigido pelo banco.** Por quê: o escritório enxerga certificados e dados de todos os clientes; senha sozinha é pouco. Como o RLS exige `aal2`, a proteção vale mesmo fora do app.
+25c. **O site público não mostra o acesso do escritório** e o login do escritório não cria contas. Por quê: reduzir a superfície de ataque e não confundir o cliente.
+25d. **O cliente faz os próprios cadastros:** empresa (pelo CNPJ), clientes e fornecedores, conta bancária e o próprio certificado digital. O escritório só cuida da parte fiscal (grade tributária).
 25. **Separação de acessos em três camadas:** proxy (cliente não abre `/contador`), servidor (papel
     vem do vínculo no banco, nunca do portal pedido) e RLS. O contador pode abrir a visão do cliente.
 26. **Cliente não cria escritório.** A função `criar_escritorio` recusa quem já é cliente e, no MVP,

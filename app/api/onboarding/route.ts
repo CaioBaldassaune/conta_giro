@@ -29,9 +29,11 @@ export async function GET() {
       admin.from("integracoes_serpro").select("cnpj_contratante").eq("escritorio_id", escritorioId).maybeSingle(),
       ob?.empresa_id ? admin.from("empresas").select("razao_social, cnpj, municipio, plano").eq("id", ob.empresa_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
+    // "É da equipe?" pela função própria (independe do segundo fator): a equipe não usa o cadastro de clientes.
+    const { data: equipe } = await sb.rpc("sou_equipe");
     return Response.json({
       usuario: { email: u.email, nome: u.displayName },
-      equipe: a.escritorios.length > 0,
+      equipe: !!equipe,
       // Já é cliente por convite (sem passar pela entrada): vai direto ao portal.
       jaCliente: !ob && a.empresasCliente.size > 0,
       onboarding: ob, empresa, cnpjEscritorio: serpro?.cnpj_contratante ?? null,
@@ -45,8 +47,8 @@ export async function POST(request: Request) {
   try {
     sameOrigin(request);
     const { sb, u } = await identity();
-    const a = await acessos(sb, u.id);
-    requireThat(!a.escritorios.length, "Esta entrada é para clientes. A equipe do escritório cadastra empresas pelo painel.", 403);
+    const { data: equipe } = await sb.rpc("sou_equipe");
+    requireThat(!equipe, "Esta entrada é para clientes. Use outro e-mail para se cadastrar como cliente.", 403);
     const d = await request.json();
     const admin = clienteAdmin();
     const { data: ob } = await admin.from("onboardings").select("*").eq("usuario_id", u.id).maybeSingle();

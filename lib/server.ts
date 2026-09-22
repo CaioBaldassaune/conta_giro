@@ -4,6 +4,7 @@
 // Regra de acesso: equipe do escritório = contador (vê a carteira toda e pode abrir a visão do
 // cliente); membro da empresa = cliente (sócio, financeiro, emissor ou consulta) e só vê a própria.
 import { criarClienteServidor, type ClienteSupabase } from "@/lib/supabase/servidor";
+import { CABECALHO_PORTAL } from "@/lib/supabase/config";
 import { DomainError, mesApuracao, mesAtual, requireThat, visibleKinds, type Audit, type Change, type Entry, type Role, type WorkspaceState } from "./domain";
 import { carregarEmpresas, ConflitoDeVersao, gravarAlteracoes, type EmpresaCarregada } from "./repositorio";
 import { PAPEIS } from "./traducao";
@@ -11,14 +12,14 @@ import { PAPEIS } from "./traducao";
 export type Portal = "contador" | "cliente";
 
 /** Portal da requisição: parâmetro explícito ou a página que fez a chamada (Referer). */
-export function portalDe(request: Request, explicito?: unknown): Portal {
-  if (explicito === "cliente" || explicito === "contador") return explicito;
-  const origem = request.headers.get("referer") ?? "";
-  try {
-    return new URL(origem).pathname.startsWith("/cliente") ? "cliente" : "contador";
-  } catch {
-    return "contador";
-  }
+/**
+ * Portal da requisição: vem do cabeçalho gravado pelo proxy (que sobrescreve o do navegador) e
+ * é o mesmo portal da sessão usada. O parâmetro explícito é ignorado de propósito: quem decide
+ * é a sessão, nunca o que a tela pede.
+ */
+export function portalDe(request: Request, _explicito?: unknown): Portal {
+  void _explicito;
+  return request.headers.get(CABECALHO_PORTAL) === "contador" ? "contador" : "cliente";
 }
 
 export async function identity() {
@@ -133,17 +134,13 @@ export async function getState(portal: Portal, companyId?: string, period = mesA
     if (!ids.length) throw new SemAcesso("sem_empresa");
   } else {
     ids = [...a.empresasCliente.keys()];
-    // O contador pode abrir o portal do cliente (visão do cliente de qualquer empresa da carteira).
-    if (!ids.length && a.escritorios.length) {
-      const { data } = await sb.from("empresas").select("id").in("escritorio_id", a.escritorios).order("razao_social");
-      ids = (data ?? []).map((e) => e.id as string);
-    }
     if (!ids.length) throw new SemAcesso("sem_convite");
   }
 
   const selected = companyId && ids.includes(companyId) ? companyId : ids[0];
-  // O papel vem do vínculo no banco (nunca do portal pedido): equipe do escritório = contador.
-  const role: Role = portal === "contador" || !a.empresasCliente.has(selected) ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
+  // O papel vem do vínculo no banco: no portal do contador só entra quem é da equipe (com o
+  // segundo fator, exigido pelo RLS); no do cliente, o papel dele na empresa.
+  const role: Role = portal === "contador" ? "accountant" : (PAPEIS.regra(a.empresasCliente.get(selected)) as Role);
   const comCarteira = portal === "contador" && !!opcoes.carteira;
   const carregadas = await carregarEmpresas(sb, comCarteira ? ids : [selected]);
   const atual = carregadas.get(selected);

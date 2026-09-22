@@ -1,13 +1,16 @@
 "use client";
-// Assistente de entrada do cliente (5 etapas, uma tela por etapa). O andamento fica no servidor
-// (tabela onboardings), então o cliente pode sair e voltar de onde parou.
+// Cadastro do cliente, feito por ele mesmo, "uma coisa por tela" (padrão do GOV.UK Design System):
+//   Conta → CNPJ → Confirmar dados (vindos da Receita) → Plano → Termos → Procuração → app.
+// Rótulos acima dos campos, sem texto de exemplo no lugar do rótulo e só os campos
+// indispensáveis (Nielsen Norman Group). O andamento fica no servidor (tabela onboardings):
+// quem sair volta de onde parou. A sessão é a do CLIENTE, separada da do escritório.
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, Check, ExternalLink, Loader2, Search } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Check, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
-import { ETAPAS, PLANOS, SERVICOS_PROCURACAO, type DadosEmpresa, type Plano } from "@/lib/onboarding";
+import { PLANOS, SERVICOS_PROCURACAO, type DadosEmpresa, type Plano } from "@/lib/onboarding";
 
 type Estado = {
   usuario: { email: string; nome: string };
@@ -17,235 +20,249 @@ type Estado = {
   empresa: { razao_social: string; cnpj: string; municipio: string } | null;
   cnpjEscritorio: string | null;
 };
+type Tela = "conta" | "cnpj" | "confirmar" | "manual" | "plano" | "termos" | "procuracao";
 
-const formatarCnpj = (c: string | null) => (c ?? "").replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const TOTAL = 5;
+const ETAPA_DA_TELA: Record<Tela, number> = { conta: 1, cnpj: 1, confirmar: 1, manual: 1, plano: 2, termos: 3, procuracao: 4 };
+const NOME_ETAPA = ["Seus dados", "Plano", "Termos", "Procuração", "Impostos"];
+const cnpjFormatado = (c: string | null) => (c ?? "").replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const sessao = () => criarClienteNavegador("cliente");
 
-async function postar(corpo: Record<string, unknown>) {
+async function enviar(corpo: Record<string, unknown>) {
   const res = await fetch("/api/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
   const d = await res.json();
   if (!res.ok) throw new Error(d.error);
-  return d as { etapa: number; message: string; destino?: string };
+  return d as { etapa: number; destino?: string };
 }
 
 export default function Assistente() {
-  const [logado, setLogado] = useState<boolean | null>(null);
   const [estado, setEstado] = useState<Estado | null>(null);
-  const [etapa, setEtapa] = useState(1);
+  const [tela, setTela] = useState<Tela | null>(null);
+  const [empresa, setEmpresa] = useState<Partial<DadosEmpresa> & Record<string, string | boolean | null | undefined>>({});
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   const carregar = useCallback(async () => {
-    const { data } = await criarClienteNavegador().auth.getUser();
-    setLogado(!!data.user);
-    if (!data.user) return;
+    const { data } = await sessao().auth.getUser();
+    if (!data.user) { setTela("conta"); return; }
     const res = await fetch("/api/onboarding", { cache: "no-store" });
     const d = await res.json();
     if (!res.ok) { setErro(d.error); return; }
     setEstado(d);
-    setEtapa(d.onboarding?.etapa ?? 1);
+    const etapa = d.onboarding?.etapa ?? 1;
+    if (d.jaCliente || etapa >= 5) { window.location.assign("/cliente"); return; }
+    setTela(etapa === 1 ? "cnpj" : etapa === 2 ? "plano" : etapa === 3 ? "termos" : "procuracao");
   }, []);
   useEffect(() => { void carregar(); }, [carregar]);
 
-  async function avancar(corpo: Record<string, unknown>) {
+  async function acao(fn: () => Promise<void>) {
     setErro(""); setOcupado(true);
-    try {
-      const r = await postar(corpo);
-      if (r.destino) { window.location.assign(r.destino); return; }
-      await carregar();
-    } catch (e) {
-      setErro((e as Error).message);
-    } finally {
-      setOcupado(false);
-    }
+    try { await fn(); } catch (e) { setErro((e as Error).message); } finally { setOcupado(false); }
   }
 
+  const avancar = (corpo: Record<string, unknown>) => acao(async () => {
+    const r = await enviar(corpo);
+    if (r.destino) { window.location.assign(r.destino); return; }
+    await carregar();
+  });
+
+  if (estado?.equipe) {
+    return <Moldura etapa={1}><h1>Esta conta é da equipe do escritório</h1><p className="muted">Para se cadastrar como cliente, use outro e-mail.</p><Button variant="outline" onClick={() => sessao().auth.signOut().then(() => location.reload())}>Sair</Button></Moldura>;
+  }
+  if (!tela) return <Moldura etapa={1}><p className="muted"><Loader2 className="spin" size={16} /> Carregando…</p>{erro && <Erro texto={erro} />}</Moldura>;
+
+  const etapa = ETAPA_DA_TELA[tela];
   return (
-    <main className="assistente">
-      <header className="lp-topo">
+    <Moldura etapa={etapa}>
+      {tela === "conta" && <Conta aoEntrar={carregar} />}
+
+      {tela === "cnpj" && (
+        <form onSubmit={(e) => { e.preventDefault(); const cnpj = String(new FormData(e.currentTarget).get("cnpj") ?? "").replace(/\D/g, ""); void acao(async () => {
+          const res = await fetch(`/api/cnpj/${cnpj}`, { cache: "no-store" });
+          const d = await res.json();
+          if (res.status === 404 || res.status === 502) { setEmpresa({ cnpj }); setTela("manual"); return; }
+          if (!res.ok) throw new Error(d.error);
+          setEmpresa({ ...d, responsavelNome: estado?.usuario.nome ?? "" });
+          setTela("confirmar");
+        }); }}>
+          <h1>Qual é o CNPJ da sua empresa?</h1>
+          <p className="muted">Buscamos os dados na Receita Federal para você não precisar digitar.</p>
+          <Campo rotulo="CNPJ"><Input name="cnpj" inputMode="numeric" autoComplete="off" required defaultValue={empresa.cnpj ? cnpjFormatado(String(empresa.cnpj)) : ""} /></Campo>
+          {erro && <Erro texto={erro} />}
+          <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Continuar</Button>
+        </form>
+      )}
+
+      {tela === "confirmar" && (
+        <form onSubmit={(e) => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)); void avancar({ etapa: 1, ...empresa, ...f }); }}>
+          <h1>Confira os dados da empresa</h1>
+          <dl className="resumo">
+            <div><dt>Razão social</dt><dd>{empresa.razaoSocial}</dd></div>
+            <div><dt>CNPJ</dt><dd>{cnpjFormatado(String(empresa.cnpj ?? ""))}</dd></div>
+            <div><dt>Endereço</dt><dd>{[empresa.logradouro, empresa.numero, empresa.bairro].filter(Boolean).join(", ") || "—"}</dd></div>
+            <div><dt>Município</dt><dd>{empresa.municipio || "—"}</dd></div>
+            {empresa.situacao && <div><dt>Situação na Receita</dt><dd>{empresa.situacao}{empresa.simples ? " • Simples Nacional" : ""}</dd></div>}
+          </dl>
+          <Campo rotulo="Seu nome (responsável)"><Input name="responsavelNome" required autoComplete="name" defaultValue={String(empresa.responsavelNome ?? "")} /></Campo>
+          <Campo rotulo="Telefone para contato"><Input name="telefone" type="tel" autoComplete="tel" defaultValue={String(empresa.telefone ?? "")} /></Campo>
+          {erro && <Erro texto={erro} />}
+          <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Está certo, continuar</Button>
+          <button type="button" className="link-discreto" onClick={() => setTela("manual")}>Algum dado errado? Corrigir</button>
+        </form>
+      )}
+
+      {tela === "manual" && (
+        <form onSubmit={(e) => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)); const [, uf] = String(f.municipio ?? "").split("/").map((x) => x.trim()); void avancar({ etapa: 1, ...empresa, ...f, uf: String(f.uf || uf || "").toUpperCase() }); }}>
+          <h1>Dados da empresa</h1>
+          <p className="muted">Não encontramos tudo na Receita. Preencha só o que falta.</p>
+          <Campo rotulo="CNPJ"><Input name="cnpj" inputMode="numeric" required defaultValue={cnpjFormatado(String(empresa.cnpj ?? ""))} /></Campo>
+          <Campo rotulo="Razão social"><Input name="razaoSocial" required defaultValue={String(empresa.razaoSocial ?? "")} /></Campo>
+          <div className="duas-colunas">
+            <Campo rotulo="CEP"><Input name="cep" inputMode="numeric" autoComplete="postal-code" defaultValue={String(empresa.cep ?? "")} /></Campo>
+            <Campo rotulo="Número"><Input name="numero" defaultValue={String(empresa.numero ?? "")} /></Campo>
+          </div>
+          <Campo rotulo="Endereço"><Input name="logradouro" autoComplete="address-line1" defaultValue={String(empresa.logradouro ?? "")} /></Campo>
+          <Campo rotulo="Bairro"><Input name="bairro" defaultValue={String(empresa.bairro ?? "")} /></Campo>
+          <div className="duas-colunas">
+            <Campo rotulo="Cidade / UF" dica="Ex.: Salvador / BA"><Input name="municipio" required defaultValue={String(empresa.municipio ?? "")} /></Campo>
+            <Campo rotulo="UF"><Input name="uf" maxLength={2} required defaultValue={String(empresa.uf ?? "")} /></Campo>
+          </div>
+          <Campo rotulo="Seu nome (responsável)"><Input name="responsavelNome" required autoComplete="name" defaultValue={String(empresa.responsavelNome ?? estado?.usuario.nome ?? "")} /></Campo>
+          <Campo rotulo="Telefone para contato"><Input name="telefone" type="tel" autoComplete="tel" defaultValue={String(empresa.telefone ?? "")} /></Campo>
+          {erro && <Erro texto={erro} />}
+          <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Continuar</Button>
+        </form>
+      )}
+
+      {tela === "plano" && <EscolherPlano atual={estado?.onboarding?.plano ?? null} ocupado={ocupado} erro={erro} aoEscolher={(plano) => avancar({ etapa: 2, plano })} />}
+
+      {tela === "termos" && (
+        <form onSubmit={(e) => { e.preventDefault(); void avancar({ etapa: 3, aceite: new FormData(e.currentTarget).get("aceite") === "on" }); }}>
+          <h1>Termos de uso</h1>
+          <p className="muted">Usamos os dados da empresa só para prestar os serviços contábeis, com acesso restrito e registro de tudo o que é feito. O pagamento e o contrato serão combinados com o escritório nesta fase.</p>
+          <label className="marcar"><input type="checkbox" name="aceite" required /><span>Li e aceito os termos de uso e a política de privacidade.</span></label>
+          {erro && <Erro texto={erro} />}
+          <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Aceitar e continuar</Button>
+        </form>
+      )}
+
+      {tela === "procuracao" && <Procuracao cnpj={estado?.cnpjEscritorio ?? null} ocupado={ocupado} erro={erro} aoConcluir={() => avancar({ etapa: 4, procuracao: true })} />}
+    </Moldura>
+  );
+}
+
+function Moldura({ etapa, children }: { etapa: number; children: ReactNode }) {
+  return (
+    <main className="cadastro">
+      <header className="cadastro-topo">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG da marca */}
-        <Link href="/"><img src="/brand/contagiro-horizontal-cor.svg" alt="ContaGiro" width="150" height="40" /></Link>
-        <nav><Link href="/cliente/entrar">Já tenho acesso</Link></nav>
+        <Link href="/" aria-label="Página inicial"><img src="/brand/contagiro-horizontal-cor.svg" alt="ContaGiro" width="128" height="34" /></Link>
+        <span className="muted">Etapa {etapa} de {TOTAL} • {NOME_ETAPA[etapa - 1]}</span>
       </header>
-
-      <ol className="assistente-passos" aria-label="Etapas">
-        {ETAPAS.map((e) => (
-          <li key={e.numero} className={e.numero < etapa ? "feita" : e.numero === etapa ? "atual" : ""} aria-current={e.numero === etapa ? "step" : undefined}>
-            <span>{e.numero < etapa ? <Check size={14} /> : e.numero}</span>{e.titulo}{e.numero === 5 && <small>contador</small>}
-          </li>
-        ))}
-      </ol>
-
-      <section className="assistente-cartao">
-        {erro && <div className="acesso-erro" role="alert">{erro}</div>}
-        {logado === null ? <p className="muted"><Loader2 className="spin" size={16} /> Carregando…</p>
-          : !logado ? <CriarAcesso aoCriar={carregar} />
-          : !estado ? <p className="muted"><Loader2 className="spin" size={16} /> Carregando…</p>
-          : estado.equipe ? <Aviso titulo="Você é da equipe do escritório" texto="Novos clientes são cadastrados pelo painel do contador." link="/contador" rotulo="Ir para o painel" />
-          : estado.jaCliente ? <Aviso titulo="Você já é cliente" texto="Seu acesso veio por convite do escritório." link="/cliente" rotulo="Entrar no aplicativo" />
-          : etapa === 1 ? <Empresa usuario={estado.usuario} ocupado={ocupado} aoEnviar={(d) => avancar({ etapa: 1, ...d })} />
-          : etapa === 2 ? <Planos atual={estado.onboarding?.plano ?? null} ocupado={ocupado} aoEscolher={(plano) => avancar({ etapa: 2, plano })} />
-          : etapa === 3 ? <Pagamento ocupado={ocupado} aoAceitar={() => avancar({ etapa: 3, aceite: true })} />
-          : etapa === 4 ? <Procuracao cnpjEscritorio={estado.cnpjEscritorio} empresa={estado.empresa} ocupado={ocupado} aoConfirmar={() => avancar({ etapa: 4, procuracao: true })} />
-          : <Aviso titulo="Tudo pronto!" texto="Sua grade tributária está com o contador (etapa 5). Enquanto isso, você já pode conectar o banco, categorizar o extrato e enviar documentos." link="/cliente" rotulo="Entrar no aplicativo" />}
-      </section>
+      <div className="cadastro-progresso" role="progressbar" aria-valuemin={1} aria-valuemax={TOTAL} aria-valuenow={etapa} aria-label="Progresso do cadastro"><span style={{ width: `${(etapa / TOTAL) * 100}%` }} /></div>
+      <section className="cadastro-cartao">{children}</section>
     </main>
   );
 }
 
-function Aviso({ titulo, texto, link, rotulo }: { titulo: string; texto: string; link: string; rotulo: string }) {
-  return <div className="assistente-aviso"><h1>{titulo}</h1><p>{texto}</p><a className="lp-botao" href={link}>{rotulo} <ArrowRight size={18} /></a></div>;
+function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; children: ReactNode }) {
+  return <label className="campo"><span>{rotulo}</span>{dica && <small>{dica}</small>}{children}</label>;
 }
 
-/** Etapa 1a: conta de acesso (e-mail e senha). */
-function CriarAcesso({ aoCriar }: { aoCriar: () => Promise<void> }) {
+function Erro({ texto }: { texto: string }) {
+  return <div className="aviso-erro" role="alert">{texto}</div>;
+}
+
+/** Conta de acesso do cliente (e-mail e senha). */
+function Conta({ aoEntrar }: { aoEntrar: () => Promise<void> }) {
   const [modo, setModo] = useState<"criar" | "entrar">("criar");
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
-  async function enviar(e: FormEvent<HTMLFormElement>) {
+  async function enviarConta(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
     setErro(""); setAviso(""); setOcupado(true);
-    const supabase = criarClienteNavegador();
     try {
       if (modo === "criar") {
-        const { data, error } = await supabase.auth.signUp({ email: f.email, password: f.senha, options: { data: { nome: f.nome }, emailRedirectTo: `${location.origin}/comecar` } });
+        const { data, error } = await sessao().auth.signUp({ email: f.email, password: f.senha, options: { data: { nome: f.nome }, emailRedirectTo: `${location.origin}/comecar` } });
         if (error) throw error;
-        if (!data.session) { setAviso("Enviamos um e-mail de confirmação. Confirme e volte para esta página para continuar."); setModo("entrar"); return; }
+        if (!data.session) { setAviso("Enviamos um link para o seu e-mail. Confirme e volte aqui para continuar."); setModo("entrar"); return; }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: f.email, password: f.senha });
+        const { error } = await sessao().auth.signInWithPassword({ email: f.email, password: f.senha });
         if (error) throw error;
       }
-      await aoCriar();
+      await aoEntrar();
     } catch (e) {
       const m = (e as Error).message;
-      setErro(m.includes("Invalid login") ? "E-mail ou senha incorretos." : m.includes("already registered") ? "Este e-mail já tem conta: entre com a sua senha." : m);
+      setErro(m.includes("Invalid login") ? "E-mail ou senha incorretos." : /already registered|already been registered/i.test(m) ? "Este e-mail já tem conta. Entre com a sua senha." : /Password should|weak/i.test(m) ? "Escolha uma senha mais forte (mínimo de 8 caracteres, com letras e números)." : m);
     } finally {
       setOcupado(false);
     }
   }
 
   return (
-    <form className="assistente-form" onSubmit={enviar}>
-      <h1>{modo === "criar" ? "Quem é você?" : "Entre para continuar"}</h1>
-      <p className="muted">{modo === "criar" ? "Crie seu acesso. Na próxima tela, informe o CNPJ da empresa." : "Use o e-mail e a senha que você criou."}</p>
-      {modo === "criar" && <label>Seu nome<Input name="nome" required autoComplete="name" /></label>}
-      <label>E-mail<Input name="email" type="email" required autoComplete="email" /></label>
-      <label>Senha (mínimo 8 caracteres)<Input name="senha" type="password" minLength={8} required autoComplete={modo === "criar" ? "new-password" : "current-password"} /></label>
-      {erro && <div className="acesso-erro" role="alert">{erro}</div>}
-      {aviso && <div className="acesso-ok" role="status">{aviso}</div>}
-      <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}{modo === "criar" ? "Criar acesso" : "Entrar"}</Button>
-      <button type="button" className="acesso-link" onClick={() => setModo(modo === "criar" ? "entrar" : "criar")}>{modo === "criar" ? "Já tenho acesso" : "Criar um acesso novo"}</button>
+    <form onSubmit={enviarConta}>
+      <h1>{modo === "criar" ? "Crie sua conta" : "Entre para continuar"}</h1>
+      {modo === "criar" && <Campo rotulo="Seu nome"><Input name="nome" required autoComplete="name" /></Campo>}
+      <Campo rotulo="E-mail"><Input name="email" type="email" required autoComplete="email" /></Campo>
+      <Campo rotulo="Senha" dica={modo === "criar" ? "Mínimo de 8 caracteres, com letras e números." : undefined}>
+        <Input name="senha" type="password" minLength={8} required autoComplete={modo === "criar" ? "new-password" : "current-password"} />
+      </Campo>
+      {erro && <Erro texto={erro} />}
+      {aviso && <div className="aviso-ok" role="status">{aviso}</div>}
+      <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}{modo === "criar" ? "Criar conta" : "Entrar"}</Button>
+      <button type="button" className="link-discreto" onClick={() => { setModo(modo === "criar" ? "entrar" : "criar"); setErro(""); }}>
+        {modo === "criar" ? "Já tenho conta" : "Criar uma conta nova"}
+      </button>
     </form>
   );
 }
 
-/** Etapa 1b: empresa, com preenchimento pelo CNPJ (dados abertos da Receita). */
-function Empresa({ usuario, ocupado, aoEnviar }: { usuario: Estado["usuario"]; ocupado: boolean; aoEnviar: (d: Record<string, unknown>) => void }) {
-  const [f, setF] = useState<Record<string, string>>({ responsavelNome: usuario.nome ?? "", email: usuario.email ?? "" });
-  const [buscando, setBuscando] = useState(false);
-  const [aviso, setAviso] = useState("");
-  const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
-
-  async function buscar() {
-    setAviso(""); setBuscando(true);
-    try {
-      const res = await fetch(`/api/cnpj/${(f.cnpj ?? "").replace(/\D/g, "")}`, { cache: "no-store" });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
-      const e = d as DadosEmpresa;
-      setF((x) => ({ ...x, cnpj: e.cnpj, razaoSocial: e.razaoSocial, nomeFantasia: e.nomeFantasia ?? "", cep: e.cep ?? "", logradouro: e.logradouro ?? "", numero: e.numero ?? "", complemento: e.complemento ?? "", bairro: e.bairro ?? "", municipio: e.municipio, uf: e.uf, codigoIbge: e.codigoIbge ?? "", telefone: e.telefone ?? x.telefone ?? "", email: e.email ?? x.email ?? "" }));
-      setAviso(`${e.razaoSocial} • ${e.situacao ?? ""}${e.simples ? " • Optante do Simples" : ""}${e.cnaeDescricao ? ` • ${e.cnaeDescricao}` : ""}`);
-    } catch (e) {
-      setAviso((e as Error).message);
-    } finally {
-      setBuscando(false);
-    }
-  }
-
-  const campo = (k: string, rotulo: string, props: Record<string, unknown> = {}) => <label>{rotulo}<Input value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} {...props} /></label>;
+function EscolherPlano({ atual, ocupado, erro, aoEscolher }: { atual: Plano | null; ocupado: boolean; erro: string; aoEscolher: (p: Plano) => void }) {
+  const [plano, setPlano] = useState<Plano | null>(atual);
+  useEffect(() => { const p = new URLSearchParams(location.search).get("plano"); if (!atual && p && p in PLANOS) setPlano(p as Plano); }, [atual]);
   return (
-    <form className="assistente-form" onSubmit={(e) => { e.preventDefault(); aoEnviar(f); }}>
-      <h1>Sua empresa</h1>
-      <p className="muted">Digite o CNPJ e clique em buscar: preenchemos o resto com os dados da Receita. Confira antes de continuar.</p>
-      <div className="assistente-cnpj">
-        {campo("cnpj", "CNPJ", { required: true, inputMode: "numeric", placeholder: "00.000.000/0000-00" })}
-        <Button type="button" variant="outline" disabled={buscando} onClick={buscar}>{buscando ? <Loader2 className="spin" size={16} /> : <Search size={16} />}Buscar</Button>
-      </div>
-      {aviso && <p className="acesso-ok">{aviso}</p>}
-      <div className="form-grid">
-        {campo("razaoSocial", "Razão social", { required: true })}
-        {campo("nomeFantasia", "Nome fantasia")}
-        {campo("cep", "CEP", { inputMode: "numeric" })}
-        {campo("logradouro", "Logradouro")}
-        {campo("numero", "Número")}
-        {campo("complemento", "Complemento")}
-        {campo("bairro", "Bairro")}
-        {campo("municipio", "Município / UF", { required: true, placeholder: "Salvador / BA" })}
-        {campo("uf", "UF", { required: true, maxLength: 2 })}
-        {campo("telefone", "Telefone")}
-        {campo("email", "E-mail da empresa", { type: "email" })}
-        {campo("responsavelNome", "Responsável", { required: true })}
-      </div>
-      <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Continuar</Button>
-    </form>
-  );
-}
-
-/** Etapa 2: plano. */
-function Planos({ atual, ocupado, aoEscolher }: { atual: Plano | null; ocupado: boolean; aoEscolher: (p: Plano) => void }) {
-  const [inicial, setInicial] = useState<Plano | null>(atual);
-  useEffect(() => { const p = new URLSearchParams(location.search).get("plano"); if (!atual && p && p in PLANOS) setInicial(p as Plano); }, [atual]);
-  return (
-    <div className="assistente-form">
-      <h1>Qual plano você deseja?</h1>
-      <div className="lp-planos compacto">
+    <form onSubmit={(e) => { e.preventDefault(); if (plano) aoEscolher(plano); }}>
+      <h1>Qual plano combina com você?</h1>
+      <p className="muted">Dá para mudar depois com o seu contador.</p>
+      <fieldset className="opcoes">
+        <legend className="sr-only">Planos</legend>
         {(Object.keys(PLANOS) as Plano[]).map((id) => (
-          <article key={id} className={`lp-plano ${inicial === id ? "destaque" : ""}`}>
-            <h3>{PLANOS[id].nome}</h3>
-            <p>{PLANOS[id].resumo}</p>
-            <strong className="lp-preco">{PLANOS[id].preco}</strong>
-            <ul>{PLANOS[id].itens.map((i) => <li key={i}><Check size={14} />{i}</li>)}</ul>
-            <Button disabled={ocupado} variant={inicial === id ? "default" : "outline"} onClick={() => aoEscolher(id)}>Escolher {PLANOS[id].nome}</Button>
-          </article>
+          <label key={id} className={`opcao ${plano === id ? "marcada" : ""}`}>
+            <input type="radio" name="plano" value={id} checked={plano === id} onChange={() => setPlano(id)} />
+            <span className="opcao-texto"><strong>{PLANOS[id].nome}</strong><span>{PLANOS[id].resumo}</span></span>
+            {plano === id && <Check size={18} />}
+          </label>
         ))}
-      </div>
-    </div>
+      </fieldset>
+      {erro && <Erro texto={erro} />}
+      <Button type="submit" disabled={!plano || ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Continuar</Button>
+    </form>
   );
 }
 
-/** Etapa 3: pagamento e contrato — em espera; só o aceite dos termos. */
-function Pagamento({ ocupado, aoAceitar }: { ocupado: boolean; aoAceitar: () => void }) {
-  const [aceite, setAceite] = useState(false);
+function Procuracao({ cnpj, ocupado, erro, aoConcluir }: { cnpj: string | null; ocupado: boolean; erro: string; aoConcluir: () => void }) {
+  const [copiado, setCopiado] = useState(false);
   return (
-    <div className="assistente-form">
-      <h1>Pagamento e contrato</h1>
-      <p className="assistente-espera">Em breve: cadastro do meio de pagamento e assinatura digital do contrato. Nesta fase de testes, seguimos só com o aceite dos termos.</p>
-      <label className="check-option"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />Li e aceito os termos de uso e a política de privacidade do ContaGiro (versão de homologação), inclusive o tratamento dos dados da empresa para a prestação dos serviços contábeis.</label>
-      <Button disabled={!aceite || ocupado} onClick={aoAceitar}>{ocupado && <Loader2 className="spin" size={16} />}Continuar</Button>
-    </div>
-  );
-}
-
-/** Etapa 4: procuração no e-CAC para o escritório (Integra Contador). */
-function Procuracao({ cnpjEscritorio, empresa, ocupado, aoConfirmar }: { cnpjEscritorio: string | null; empresa: Estado["empresa"]; ocupado: boolean; aoConfirmar: () => void }) {
-  const [feito, setFeito] = useState(false);
-  return (
-    <div className="assistente-form">
-      <h1>Procurações</h1>
-      <p className="muted">Para o escritório consultar e declarar o Simples Nacional de {empresa?.razao_social ?? "sua empresa"} direto com a Receita, autorize-o no e-CAC.</p>
-      <ol className="assistente-lista">
-        <li>Acesse o e-CAC com o gov.br ou o certificado digital da empresa.</li>
-        <li>Vá em <strong>Senhas e Procurações → Cadastro, Consulta e Cancelamento → Procuração para e-CAC</strong>.</li>
-        <li>Outorgado: <strong>{cnpjEscritorio ? `CNPJ ${formatarCnpj(cnpjEscritorio)}` : "CNPJ do escritório (peça ao contador)"}</strong>.</li>
-        <li>Marque os serviços: {SERVICOS_PROCURACAO.map((s) => `${s.codigo} (${s.nome})`).join(", ")}.</li>
-        <li>Escolha a validade (recomendado: 5 anos) e confirme.</li>
+    <form onSubmit={(e) => { e.preventDefault(); aoConcluir(); }}>
+      <h1>Autorize o escritório na Receita</h1>
+      <p className="muted">Assim o seu contador declara o Simples e emite sua guia direto com a Receita, sem precisar da sua senha.</p>
+      <ol className="lista-passos">
+        <li>Entre no e-CAC com a sua conta gov.br.</li>
+        <li>Abra <strong>Senhas e Procurações → Procuração para e-CAC</strong>.</li>
+        <li>
+          Autorize o CNPJ {cnpj ? <strong>{cnpjFormatado(cnpj)}</strong> : "do escritório"}
+          {cnpj && <button type="button" className="copiar" onClick={() => { void navigator.clipboard?.writeText(cnpj); setCopiado(true); }}><Copy size={14} />{copiado ? "Copiado" : "Copiar"}</button>}
+          {" "}com os serviços {SERVICOS_PROCURACAO.map((s) => s.codigo).join(", ")}.
+        </li>
       </ol>
-      <a className="lp-link" href="https://cav.receita.fazenda.gov.br/autenticacao/login" target="_blank" rel="noopener noreferrer">Abrir o e-CAC <ExternalLink size={14} /></a>
-      <label className="check-option"><input type="checkbox" checked={feito} onChange={(e) => setFeito(e.target.checked)} />Já outorguei a procuração ao escritório.</label>
-      <p className="muted">O contador confere a procuração (sem custo) e depois configura sua grade tributária (etapa 5).</p>
-      <Button disabled={!feito || ocupado} onClick={aoConfirmar}>{ocupado && <Loader2 className="spin" size={16} />}Concluir e entrar no aplicativo</Button>
-    </div>
+      <a className="link-externo" href="https://cav.receita.fazenda.gov.br/autenticacao/login" target="_blank" rel="noopener noreferrer">Abrir o e-CAC <ExternalLink size={14} /></a>
+      <label className="marcar"><input type="checkbox" required /><span>Já autorizei o escritório.</span></label>
+      {erro && <Erro texto={erro} />}
+      <Button type="submit" disabled={ocupado}>{ocupado && <Loader2 className="spin" size={16} />}Concluir e entrar no app</Button>
+      <p className="muted pequeno">Depois disso, seu contador configura os impostos (etapa 5). Você já pode usar o app.</p>
+    </form>
   );
 }

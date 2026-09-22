@@ -1,87 +1,62 @@
 import Link from "next/link";
-import { ArrowRight, Check, FileCheck2, KeyRound, Landmark, ReceiptText, ShieldCheck } from "lucide-react";
-import { ETAPAS, PLANOS, type Plano } from "@/lib/onboarding";
+import { ArrowRight, Check, FileText, Landmark, ShieldCheck } from "lucide-react";
+import { PLANOS, type Plano } from "@/lib/onboarding";
 
-// Página inicial pública: apresenta o ContaGiro, as 5 etapas de entrada e os planos.
-// "Começar agora" leva ao assistente (/comecar); quem já é cliente ou contador entra direto.
+// Página inicial pública, só para clientes (o acesso do escritório é separado e não aparece aqui).
+// Princípios: uma ação principal (criar conta), pouco texto, muito respiro, leitura no celular.
 export default function Inicio() {
   return (
-    <main className="lp">
-      <header className="lp-topo">
+    <main className="site">
+      <header className="site-topo">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG da marca, sem otimização */}
-        <img src="/brand/contagiro-horizontal-cor.svg" alt="ContaGiro" width="168" height="44" />
+        <img src="/brand/contagiro-horizontal-cor.svg" alt="ContaGiro" width="140" height="37" />
         <nav>
-          <Link href="/cliente/entrar">Já sou cliente</Link>
-          <Link href="/contador/entrar">Sou contador</Link>
-          <Link className="lp-botao pequeno" href="/comecar">Começar agora</Link>
+          <Link href="/cliente/entrar">Entrar</Link>
+          <Link className="site-botao pequeno" href="/comecar">Começar</Link>
         </nav>
       </header>
 
-      <section className="lp-hero">
-        <div>
-          <span className="lp-selo">Contabilidade + gestão no mesmo aplicativo</span>
-          <h1>Seu negócio no giro certo.</h1>
-          <p>O extrato do banco chega sozinho todo dia, você categoriza em minutos, emite suas notas e o contador cuida dos impostos. Tudo num lugar só.</p>
-          <div className="lp-acoes">
-            <Link className="lp-botao" href="/comecar">Começar agora <ArrowRight size={18} /></Link>
-            <a className="lp-link" href="#planos">Ver planos</a>
-          </div>
-        </div>
-        <ul className="lp-destaques">
-          <li><Landmark size={20} /><span><strong>Extrato automático</strong> pelo Open Finance, com quem pagou e quem recebeu.</span></li>
-          <li><ReceiptText size={20} /><span><strong>Nota fiscal</strong> pelo Emissor Nacional ou pela prefeitura.</span></li>
-          <li><FileCheck2 size={20} /><span><strong>Simples Nacional</strong>: declaração e DAS direto com a Receita.</span></li>
-          <li><ShieldCheck size={20} /><span><strong>Seus dados protegidos</strong>: acesso separado e segredos criptografados.</span></li>
-        </ul>
+      <section className="site-hero">
+        <h1>Sua contabilidade no giro certo.</h1>
+        <p>Extrato do banco automático, notas fiscais e impostos em dia, com um contador de verdade do seu lado.</p>
+        <Link className="site-botao" href="/comecar">Criar minha conta <ArrowRight size={18} /></Link>
+        <small>Leva poucos minutos. Você só precisa do CNPJ.</small>
       </section>
 
-      <section className="lp-secao">
-        <h2>Como funciona</h2>
-        <p className="lp-sub">Cinco etapas. Ao terminar a quarta, você já entra no aplicativo.</p>
-        <ol className="lp-etapas">
-          {ETAPAS.map((e) => (
-            <li key={e.numero}>
-              <span className="lp-numero">{e.numero}</span>
-              <strong>{e.titulo}</strong>
-              <span>{e.descricao}</span>
-              {e.numero === 5 && <em>Feita pelo contador</em>}
-              {e.numero === 3 && <em>Em breve</em>}
-            </li>
-          ))}
+      <section className="site-secao site-beneficios" aria-label="O que você ganha">
+        <div><Landmark size={22} /><h2>Extrato automático</h2><p>Todo dia o banco manda o extrato. Você só categoriza.</p></div>
+        <div><FileText size={22} /><h2>Notas fiscais</h2><p>Emita pelo app, sem entrar no site da prefeitura.</p></div>
+        <div><ShieldCheck size={22} /><h2>Impostos em dia</h2><p>O escritório declara e envia sua guia. Seus dados ficam protegidos.</p></div>
+      </section>
+
+      <section className="site-secao">
+        <h2 className="site-titulo">Como começar</h2>
+        <ol className="site-passos">
+          <li><strong>Crie sua conta</strong><span>E informe o CNPJ.</span></li>
+          <li><strong>Escolha o plano</strong><span>Essencial, Gestão ou Estratégia.</span></li>
+          <li><strong>Aceite os termos</strong><span>Tudo às claras.</span></li>
+          <li><strong>Autorize o escritório</strong><span>Na Receita, pelo e-CAC.</span></li>
         </ol>
+        <p className="site-nota">Depois, seu contador configura os impostos. Você já pode usar o app.</p>
       </section>
 
-      <section className="lp-secao" id="planos">
-        <h2>Planos</h2>
-        <p className="lp-sub">Escolha na etapa 2. Dá para mudar depois com o seu contador.</p>
-        <div className="lp-planos">
-          {(Object.keys(PLANOS) as Plano[]).map((id) => {
-            const p = PLANOS[id];
-            return (
-              <article key={id} className={`lp-plano ${id === "gestao" ? "destaque" : ""}`}>
-                {id === "gestao" && <span className="lp-selo">Mais escolhido</span>}
-                <h3>{p.nome}</h3>
-                <p>{p.resumo}</p>
-                <strong className="lp-preco">{p.preco}</strong>
-                <ul>{p.itens.map((i) => <li key={i}><Check size={16} />{i}</li>)}</ul>
-                <Link className="lp-botao secundario" href={`/comecar?plano=${id}`}>Quero o {p.nome}</Link>
-              </article>
-            );
-          })}
+      <section className="site-secao" id="planos">
+        <h2 className="site-titulo">Planos</h2>
+        <div className="site-planos">
+          {(Object.keys(PLANOS) as Plano[]).map((id) => (
+            <article key={id}>
+              <h3>{PLANOS[id].nome}</h3>
+              <p>{PLANOS[id].resumo}</p>
+              <ul>{PLANOS[id].itens.slice(0, 4).map((i) => <li key={i}><Check size={16} />{i}</li>)}</ul>
+              <Link href={`/comecar?plano=${id}`}>Escolher {PLANOS[id].nome}</Link>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="lp-secao lp-seguranca">
-        <KeyRound size={24} />
-        <div>
-          <h2>Segurança</h2>
-          <p>Cada cliente vê só a própria empresa; o painel do escritório é exclusivo da equipe. Certificados, tokens e senhas de integração ficam criptografados no cofre do banco de dados e nunca aparecem na tela. Toda alteração fica registrada.</p>
-        </div>
-      </section>
-
-      <footer className="lp-rodape">
-        <span>ContaGiro • ambiente de homologação</span>
-        <span><Link href="/cliente/entrar">Portal do cliente</Link> • <Link href="/contador/entrar">Portal do contador</Link></span>
+      <footer className="site-rodape">
+        <span>© ContaGiro</span>
+        <Link href="/cliente/entrar">Entrar</Link>
       </footer>
     </main>
   );

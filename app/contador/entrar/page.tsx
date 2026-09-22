@@ -1,12 +1,14 @@
-import { CartaoAcesso, FormularioAcesso } from "@/app/acesso/entrar-form";
+import { CartaoAcesso } from "@/app/acesso/entrar-form";
+import EntrarEquipe from "./entrar-equipe";
 
-export const metadata = { title: "Entrar • Portal do contador | ContaGiro" };
+export const metadata = { title: "Escritório | ContaGiro", robots: { index: false, follow: false } };
 
+// Acesso da equipe do escritório. Endereço separado, sem link no site público e fora dos
+// buscadores (robots noindex). Exige senha + código do aplicativo autenticador.
 export default function EntrarContador() {
   return (
-    <CartaoAcesso titulo="Portal do contador" descricao="Gestão da carteira, fechamentos e documentos dos clientes.">
-      <FormularioAcesso destino="/contador" permitirCadastro />
-      <div className="acesso-rodape"><a href="/cliente/entrar">Sou cliente</a></div>
+    <CartaoAcesso titulo="Acesso do escritório" descricao="Área restrita à equipe.">
+      <EntrarEquipe />
     </CartaoAcesso>
   );
 }

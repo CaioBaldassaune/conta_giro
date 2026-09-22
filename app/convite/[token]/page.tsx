@@ -15,12 +15,12 @@ export default function AceitarConvite({ params }: { params: Promise<{ token: st
   const [ocupado, setOcupado] = useState(false);
 
   useEffect(() => {
-    criarClienteNavegador().auth.getUser().then(({ data }) => setLogado(data.user?.email ?? null));
+    criarClienteNavegador("cliente").auth.getUser().then(({ data }) => setLogado(data.user?.email ?? null));
   }, []);
 
   async function aceitar() {
     setErro(""); setOcupado(true);
-    const { data, error } = await criarClienteNavegador().rpc("aceitar_convite", { p_token: token });
+    const { data, error } = await criarClienteNavegador("cliente").rpc("aceitar_convite", { p_token: token });
     if (error) {
       setErro(error.message);
       setOcupado(false);
