@@ -86,9 +86,9 @@ tomada (setembro de 2026).
 25. **Separação de acessos em três camadas:** proxy (cliente não abre `/contador`), servidor (papel
     vem do vínculo no banco, nunca do portal pedido) e RLS. O contador vê o cliente pela opção
     "Ver como cliente" dentro do portal dele.
+26. **Cliente não cria escritório.** A função `criar_escritorio` recusa quem já é cliente e, no MVP,
+    aceita um único escritório. Por quê: sem isso, um cliente poderia abrir um painel de contador.
 27. **Sessões separadas por portal (cookies diferentes).** Por quê: o mesmo navegador precisa poder ter o contador logado e, ao mesmo tempo, alguém se cadastrando como cliente, sem um acesso "vazar" no outro. O proxy decide qual sessão vale e sobrescreve qualquer pista vinda do navegador.
 28. **Segundo fator obrigatório para a equipe, exigido pelo banco.** Por quê: o escritório enxerga certificados e dados de todos os clientes; senha sozinha é pouco. Como o RLS exige `aal2`, a proteção vale mesmo fora do app.
 29. **O site público não mostra o acesso do escritório** e o login do escritório não cria contas. Por quê: reduzir a superfície de ataque e não confundir o cliente.
 30. **O cliente faz os próprios cadastros:** empresa (pelo CNPJ), clientes e fornecedores, conta bancária e o próprio certificado digital. O escritório só cuida da parte fiscal (grade tributária).
-26. **Cliente não cria escritório.** A função `criar_escritorio` recusa quem já é cliente e, no MVP,
-    aceita um único escritório. Por quê: sem isso, um cliente poderia abrir um painel de contador.
